@@ -1,0 +1,145 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+
+#root {
+    display: flex;
+    flex-direction: column;
+}
+
+form {
+    display: flex;
+    padding: 2rem 1rem;
+    gap: 1rem;
+    position: fixed;
+    min-width: 100%;
+    z-index: 1000;
+    background: snow;
+}
+
+.form-item input {
+    border-radius: 7px;
+    max-width: 5rem;
+    padding: .5rem;
+}
+
+.submit-btn {
+    background-color: #0b0101;
+    color: #e5e5e5;
+    border-radius: 5px;
+    font-size: 16px;
+    padding: 0 1rem;
+}
+
+.nth-floor-setup {
+    min-height: 10rem;
+    border-bottom: 1.5px solid black;
+    display: flex;
+    padding-left: 1rem;
+}
+
+
+.nth-floor-btn-setup{
+    display: flex;
+    gap: 1rem;
+    align-items: end;
+    padding-bottom: 1rem;
+}
+
+.nth-floor-btn {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem
+}
+
+.floor-btn {
+    padding: 0.3rem .5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid;
+    min-width: 3.2rem;
+}
+
+.up-btn {
+    background-color: #06D001;
+}
+.up-btn:hover {
+    background-color: #059212;
+}
+.down-btn{
+background-color: #F4CE14;
+}
+.down-btn:hover {
+    background-color: #FFBF00;
+}
+
+.normal-floor-setup {
+    overflow: auto;
+    max-height: 100vh;
+    padding-top: 5rem;
+    position: relative;
+}
+
+.reverse-floor-setup {
+    overflow: auto;
+    max-height: 100vh;
+    min-height: 100vh;
+    padding: 6rem 0rem 0rem 0rem;
+    display: flex;
+    flex-direction: column-reverse;
+    position: relative;
+}
+
+.normal-floor-setup .lifts {
+    top: 10.4rem;
+}
+
+.reverse-floor-setup .lifts {
+    bottom: 0;
+}
+
+.reverse-floor-setup .floors {
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.nth-lift-setup {
+    position: relative;
+    background-color: #59B4C3;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+.lifts {
+    left: 10rem;
+    display: flex;
+    position: absolute;
+    gap: 1rem;
+    padding-bottom: 1px;
+}
+
+.hide {
+   display: none;
+}
+
+.lift-boundary {
+    border: .5px solid black;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    padding: 2rem 1rem;
+    margin-top: .5rem;
+    margin-left: .5rem;
+    margin-right: .5rem;
+    display: flex;
+    align-items: center;
+    background-color: #1679AB;
+}
+
+.door-left-part, .door-right-part {
+    border: .5px solid black;
+    min-height: 87%;
+    position: absolute;
+}
