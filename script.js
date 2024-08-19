@@ -293,7 +293,7 @@ function onSubmit(e){
         return;
     }
 
-    const dataStore = new DataStore(lifts, floors, root);
+    const dataStore = new DataStore(Math.ceil(lifts), Math.ceil(floors), root);
     const engine = new LiftSimulationEngine(dataStore)
 
     const lastChild = root.lastChild;
