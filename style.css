@@ -42,6 +42,7 @@ form {
 .floors {
     display: flex;
     margin-top: 5rem;
+    margin-bottom: 2rem;
 }
 
 .normal, .normal .floors {
