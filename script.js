@@ -183,11 +183,9 @@ class LiftSimulationEngine {
 
         try{
             while(this.dataStore.requestQueue.length > 0){
-                console.log(this.dataStore);
                 let response = await this.move()
                 console.log(response);
                 if(this.dataStore.requestQueue.length === 1){
-                    console.log(this.dataStore);
                     response = await this.move()
                     console.log(response);
                     break;
