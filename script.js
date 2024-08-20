@@ -79,12 +79,13 @@ class LiftSimulationEngine {
                             <button class="floor-btn down-btn ${(basement === false && idx===0) || (basement === true && idx === floors-1 )? 'hide':''}" key=${idx} id="down-${idx}-btn">Down</button>
                         </div>
                     </div>
+                    ${idx===0?liftSetup:""}
                 </div>`
             }).join("")
         }
         </div>`;
 
-        setup.innerHTML = floorSetup + liftSetup;
+        setup.innerHTML = floorSetup;
         this.dataStore.root.append(setup)
 
         const floorBtns = document.querySelectorAll(".floor-btn");

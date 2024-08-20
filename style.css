@@ -4,20 +4,14 @@
     box-sizing: border-box;
 }
 
-
-#root {
-    display: flex;
-    flex-direction: column;
-}
-
 form {
-    display: flex;
-    padding: 2rem 1rem;
+    padding: 1.5rem;
     gap: 1rem;
+    display: flex;
     position: fixed;
-    width: 100%;
     z-index: 1000;
     background: snow;
+    width: 100%;
 }
 
 .form-item input {
@@ -34,16 +28,20 @@ form {
     padding: 0 1rem;
 }
 
+.submit-btn:hover {
+    cursor: pointer;
+    background-color: #06D001;
+}
+
 .reverse, .normal {
     display: flex;
     overflow-y: auto;
     height: 100vh;
-    padding-top: 3rem;
-    position: relative;
 }
 
 .floors {
     display: flex;
+    margin-top: 5rem;
 }
 
 .normal, .normal .floors {
@@ -55,24 +53,43 @@ form {
 }
 
 .nth-floor-setup {
-    min-height: 10rem;
-    display: flex;
+    height: 10rem;
     border-bottom: 1.5px solid black;
+    display: grid;
+    grid-template-columns: 25% 75%;
 }
 
-.nth-floor-btn-setup{
-    display: flex;
-    width: 60%;
+@media (min-width:426px){
+   .nth-floor-btn-setup {
+    grid-template-columns: repeat(2, 1fr);
+   }
+}
+
+@media (min-width:768px){
+    .nth-floor-setup{
+        grid-template-columns: 15% 85%;
+    }
+}
+@media (min-width:1024px){
+    .nth-floor-setup{
+        grid-template-columns: 10% 90%;
+    }
+}
+
+.nth-floor-btn-setup {
+    display: grid;
     align-items: end;
-    padding-bottom: 1rem;
-    max-width: 10rem;
-    justify-content: space-evenly;
+    gap: .5rem;
+    padding: 0rem .5rem .5rem;
 }
 
 .nth-floor-btn {
-    display: flex;
-    flex-direction: column;
-    gap: .5rem
+    display: grid;
+    gap: .5rem;
+}
+
+.floor-mark {
+    width: 3rem;
 }
 
 .floor-btn {
@@ -80,7 +97,8 @@ form {
     border-radius: 4px;
     cursor: pointer;
     border: 1px solid;
-    min-width: 3.2rem;
+    width: 3.5rem;
+    max-width: 3rem;
 }
 
 .up-btn {
@@ -96,25 +114,17 @@ background-color: #F4CE14;
     background-color: #FFBF00;
 }
 
+.lifts {
+    display: flex;
+    gap: 1rem;
+    align-items: end;
+}
 .nth-lift-setup {
-    position: relative;
     background-color: #59B4C3;
+    position: relative;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
-}
-
-.lifts {
-    left: 10rem;
-    display: flex;
-    position: absolute;
-    gap: 1rem;
-    padding-bottom: 1px;
-}
-
-
-.normal .lifts {
-    top: 8.4rem;
-}
+} 
 
 .hide {
    display: none;
@@ -135,6 +145,6 @@ background-color: #F4CE14;
 
 .door-left-part, .door-right-part {
     border: .5px solid black;
-    min-height: 87%;
+    padding-top: 4rem;
     position: absolute;
 }
