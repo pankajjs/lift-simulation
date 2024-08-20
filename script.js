@@ -153,8 +153,14 @@ class LiftSimulationEngine {
     
             if(currentFloor === this.dataStore.liftStatus[lift].floor){
                 await this.changeDoorPos(this.dataStore.initialDoorPos, this.dataStore.finalDoorPos, Action.open, lift)
-                await this.changeDoorPos(this.dataStore.finalDoorPos, this.dataStore.initialDoorPos, Action.close, lift)
-                resolve(`Processed request for floor ${currentFloor}, lift used ${lift+1}, now at ${this.dataStore.liftStatus[lift].floor}`)
+                this.changeDoorPos(this.dataStore.finalDoorPos, this.dataStore.initialDoorPos, Action.close, lift)
+                .then(res=>{
+                    resolve(`Processed request for floor ${currentFloor}, lift used ${lift+1}, now at ${this.dataStore.liftStatus[lift].floor}`)
+                    this.updateLiftStatus(lift, {
+                        status: "idle",
+                    })
+                    this.dataStore.liftQueue.unshift(lift);
+                })
                 return;
             }
 
@@ -177,9 +183,11 @@ class LiftSimulationEngine {
 
         try{
             while(this.dataStore.requestQueue.length > 0){
+                console.log(this.dataStore);
                 let response = await this.move()
                 console.log(response);
                 if(this.dataStore.requestQueue.length === 1){
+                    console.log(this.dataStore);
                     response = await this.move()
                     console.log(response);
                     break;
