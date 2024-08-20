@@ -57,6 +57,7 @@ form {
     border-bottom: 1.5px solid black;
     display: grid;
     grid-template-columns: 25% 75%;
+    gap: 1rem;
 }
 
 @media (min-width:426px){
