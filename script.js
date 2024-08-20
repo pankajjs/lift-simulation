@@ -150,10 +150,9 @@ class LiftSimulationEngine {
                         
             const {direction, finalLiftPos, initialLiftPos, lift} = config
     
-            await this.changeDoorPos(this.dataStore.initialDoorPos, this.dataStore.finalDoorPos, Action.open, lift)
-            await this.changeDoorPos(this.dataStore.finalDoorPos, this.dataStore.initialDoorPos, Action.close, lift)
-            
             if(currentFloor === this.dataStore.liftStatus[lift].floor){
+                await this.changeDoorPos(this.dataStore.initialDoorPos, this.dataStore.finalDoorPos, Action.open, lift)
+                await this.changeDoorPos(this.dataStore.finalDoorPos, this.dataStore.initialDoorPos, Action.close, lift)
                 resolve(`Processed request for floor ${currentFloor}, lift used ${lift+1}, now at ${this.dataStore.liftStatus[lift].floor}`)
                 return;
             }
