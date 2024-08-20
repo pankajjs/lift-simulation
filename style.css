@@ -15,7 +15,7 @@ form {
     padding: 2rem 1rem;
     gap: 1rem;
     position: fixed;
-    min-width: 100%;
+    width: 100%;
     z-index: 1000;
     background: snow;
 }
@@ -34,19 +34,39 @@ form {
     padding: 0 1rem;
 }
 
-.nth-floor-setup {
-    min-height: 10rem;
-    border-bottom: 1.5px solid black;
+.reverse, .normal {
     display: flex;
-    padding-left: 1rem;
+    overflow-y: auto;
+    height: 100vh;
+    padding-top: 3rem;
+    position: relative;
 }
 
+.floors {
+    display: flex;
+}
+
+.normal, .normal .floors {
+    flex-direction: column;
+}
+
+.reverse, .reverse .floors {
+    flex-direction: column-reverse;
+}
+
+.nth-floor-setup {
+    min-height: 10rem;
+    display: flex;
+    border-bottom: 1.5px solid black;
+}
 
 .nth-floor-btn-setup{
     display: flex;
-    gap: 1rem;
+    width: 60%;
     align-items: end;
     padding-bottom: 1rem;
+    max-width: 10rem;
+    justify-content: space-evenly;
 }
 
 .nth-floor-btn {
@@ -76,36 +96,6 @@ background-color: #F4CE14;
     background-color: #FFBF00;
 }
 
-.normal-floor-setup {
-    overflow: auto;
-    max-height: 100vh;
-    padding-top: 5rem;
-    position: relative;
-}
-
-.reverse-floor-setup {
-    overflow: auto;
-    max-height: 100vh;
-    min-height: 100vh;
-    padding: 6rem 0rem 0rem 0rem;
-    display: flex;
-    flex-direction: column-reverse;
-    position: relative;
-}
-
-.normal-floor-setup .lifts {
-    top: 10.4rem;
-}
-
-.reverse-floor-setup .lifts {
-    bottom: 0;
-}
-
-.reverse-floor-setup .floors {
-    display: flex;
-    flex-direction: column-reverse;
-}
-
 .nth-lift-setup {
     position: relative;
     background-color: #59B4C3;
@@ -119,6 +109,11 @@ background-color: #F4CE14;
     position: absolute;
     gap: 1rem;
     padding-bottom: 1px;
+}
+
+
+.normal .lifts {
+    top: 8.4rem;
 }
 
 .hide {

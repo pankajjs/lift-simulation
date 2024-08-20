@@ -45,12 +45,12 @@ class LiftSimulationEngine {
     }
     setup(){
         const {floors, basement, lifts} = this.dataStore;
-        const floorSetup = document.createElement("div")
+        const setup = document.createElement("div")
 
         if(basement === false){
-            floorSetup.classList.add("reverse-floor-setup");
+            setup.classList.add("reverse");
         }else{
-            floorSetup.classList.add("normal-floor-setup");
+            setup.classList.add("normal");
         }
 
         const liftSetup = `<div class="lifts">
@@ -66,22 +66,26 @@ class LiftSimulationEngine {
         }
         </div>`
 
-        floorSetup.innerHTML = Array(floors).fill().map((_, idx)=>{
-            return `<div class="nth-floor-setup" id="floor-${idx}-setup">
-                <div class="nth-floor-btn-setup">
-                    <div class="floor-mark">
-                        <div>FLR ${idx == 0?"G":idx}</div>
+        const floorSetup = `<div class="floors">
+        ${
+            Array(floors).fill().map((_, idx)=>{
+                return `<div class="nth-floor-setup" id="floor-${idx}-setup">
+                    <div class="nth-floor-btn-setup">
+                        <div class="floor-mark">
+                            <div>FLR ${idx == 0?"G":idx}</div>
+                        </div>
+                        <div class="nth-floor-btn">
+                            <button class="floor-btn up-btn ${(basement === false && idx===floors-1) || (basement === true && idx === 0)?'hide':''}" key=${idx} id="up-${idx}-btn">Up</button>
+                            <button class="floor-btn down-btn ${(basement === false && idx===0) || (basement === true && idx === floors-1 )? 'hide':''}" key=${idx} id="down-${idx}-btn">Down</button>
+                        </div>
                     </div>
-                    <div class="nth-floor-btn">
-                        <button class="floor-btn up-btn ${(basement === false && idx===floors-1) || (basement === true && idx === 0)?'hide':''}" key=${idx} id="up-${idx}-btn">Up</button>
-                        <button class="floor-btn down-btn ${(basement === false && idx===0) || (basement === true && idx === floors-1 )? 'hide':''}" key=${idx} id="down-${idx}-btn">Down</button>
-                    </div>
-                </div>
-                ${idx === 0 ? liftSetup: ""}
-            </div>`
-        }).join("");
+                </div>`
+            }).join("")
+        }
+        </div>`;
 
-        this.dataStore.root.append(floorSetup)
+        setup.innerHTML = floorSetup + liftSetup;
+        this.dataStore.root.append(setup)
 
         const floorBtns = document.querySelectorAll(".floor-btn");
 
