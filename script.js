@@ -15,7 +15,8 @@ const Action = {
 
 const Direction = {
     up : "up",
-    down: "down"
+    down: "down",
+    none: "none",
 }
 
 class DataStore {
@@ -147,19 +148,23 @@ class LiftSimulationEngine {
     
             await this.changeDoorPos(this.dataStore.initialDoorPos, this.dataStore.finalDoorPos, Action.open, lift)
             await this.changeDoorPos(this.dataStore.finalDoorPos, this.dataStore.initialDoorPos, Action.close, lift)
-            await this.changeLiftPos(initialLiftPos, finalLiftPos, lift, direction, currentFloor);
-            await this.changeDoorPos(this.dataStore.initialDoorPos, this.dataStore.finalDoorPos, Action.open, lift)
             
-            let doorClosed = await this.changeDoorPos(this.dataStore.finalDoorPos, this.dataStore.initialDoorPos, Action.close, lift)
-            if(doorClosed){
+            if(currentFloor === this.dataStore.liftStatus[lift].floor){
+                resolve(`Processed request for floor ${currentFloor}, lift used ${lift+1}, now at ${this.dataStore.liftStatus[lift].floor}`)
+                return;
+            }
+
+            await this.changeLiftPos(initialLiftPos, finalLiftPos, lift, direction, currentFloor)
+            await this.changeDoorPos(this.dataStore.initialDoorPos, this.dataStore.finalDoorPos, Action.open, lift)
+            this.changeDoorPos(this.dataStore.finalDoorPos, this.dataStore.initialDoorPos, Action.close, lift)
+            .then(res=>{
                 this.updateLiftStatus(lift, {
                     status: "idle",
                 })
-                this.dataStore.liftQueue.push(lift);
-            }
-    
-            resolve(`Processed request for floor ${currentFloor}, lift used ${lift+1}, now at ${this.dataStore.liftStatus[lift].floor}`);
-        })
+                this.dataStore.liftQueue.unshift(lift);
+            }).then(res=>
+                resolve(`Processed request for floor ${currentFloor}, lift used ${lift+1}, now at ${this.dataStore.liftStatus[lift].floor}`)
+            ).catch(err=>reject(err))})
     }
 
     moveLift = async (e) => {
@@ -168,10 +173,10 @@ class LiftSimulationEngine {
 
         try{
             while(this.dataStore.requestQueue.length > 0){
-                const response = await this.move()
+                let response = await this.move()
                 console.log(response);
                 if(this.dataStore.requestQueue.length === 1){
-                    const response = await this.move()
+                    response = await this.move()
                     console.log(response);
                     break;
                 }
@@ -185,30 +190,49 @@ class LiftSimulationEngine {
         this.dataStore.liftStatus[lift] = {...this.dataStore.liftStatus[lift], ...status}
     }
 
-    changeDoorPos(initialPos, finalPos, action, lift){
+    changeDoorPos(initialDoorPos, finalDoorPos, action, lift){
         return new Promise((resolve, reject)=>{
             const liftDiv = document.getElementById(`lift-${lift}-setup`);
+
+            if(!liftDiv){
+                reject(`Lift ${lift} is not found`);
+                return;
+            }
 
             const leftDoor = liftDiv.querySelector('.door-left-part');
             const rightDoor = liftDiv.querySelector('.door-right-part');
 
+            if(!leftDoor || !rightDoor){
+                reject(`Lift ${lift}'s doors are not found`)
+                return;
+            }
+            
+            let initialPos = initialDoorPos;
+            let finalPos = finalDoorPos;
             let id = null;
+
             clearInterval(id);
             
             id = setInterval(()=>{
+                if (Math.abs(initialPos - finalPos) > Math.abs(initialDoorPos - finalDoorPos)){
+                    reject(`Alert! Lift ${lift} doors are not working`)
+                    return;
+                }
+
                 if(initialPos === finalPos){
                     clearInterval(id);
                     if(Action.close === action) {
                         this.updateLiftStatus(lift, {
                             status: Status.closed
                         })
+                        resolve(`Lift ${lift} doors are closed`);
                     }
                     else {
                         this.updateLiftStatus({
                             status: Status.opened
                         })
+                        resolve(`Lift ${lift} doors are opened`);
                     };
-                    resolve(true);
                 }else{
                     if(action === Action.close) initialPos++;
                     else initialPos--;
@@ -229,28 +253,42 @@ class LiftSimulationEngine {
         return new Promise((resolve, reject)=>{
             const liftDiv = document.getElementById(`lift-${lift}-setup`);
             
+            if(!liftDiv){
+                reject(`Lift ${lift} is not found`);
+                return;
+            }
+            
+            let intialPos = initialLiftPos;
+            let finalPos = finalLiftPos;
             let id = null;
+
             clearInterval(id);
             
             id = setInterval(()=>{
-                if (initialLiftPos === finalLiftPos) {
+                if(Math.abs(intialPos - finalPos) > Math.abs(initialLiftPos - finalLiftPos)){
+                    reject(`Alert! Lift ${lift} is not working.`);
+                    return;
+                }
+
+                if (intialPos === finalPos) {
                     clearInterval(id);
                     this.updateLiftStatus(lift, {
-                        currentPos: finalLiftPos,
+                        currentPos: finalPos,
                         floor: currentFloor,
-                        status: Status.reached
+                        status: Status.reached,
+                        direction: Direction.none,
                     })
-                    resolve(`lift ${lift} reached`)
+                    resolve(`Lift ${lift} reached at ${currentFloor} floor`)
                 } else {
                     
-                    initialLiftPos = direction === Direction.up? initialLiftPos - 1: initialLiftPos + 1;  
+                    intialPos = direction === Direction.up? intialPos - 1: intialPos + 1;  
                     
-                    liftDiv.style.top = initialLiftPos + "px";
+                    liftDiv.style.top = intialPos + "px";
 
                     this.updateLiftStatus(lift, {
                         status: Status.moving,
                         direction: direction,
-                        currentPos: initialLiftPos
+                        currentPos: intialPos
                     })
                 }
             }, this.dataStore.liftSpeed)
