@@ -29,12 +29,12 @@ class DataStore {
         this.liftSpeed = 12.5; //ms
         this.finalDoorPos = 8
         this.initialDoorPos = 24
-        this.liftQueue = Array(this.lifts).fill().map((_, idx)=>idx)
         this.liftStatus = Array(this.lifts).fill().map((_, idx)=>{
             return {"floor": 0,"status": Status.idle, "currentPos": 0}
         })
         this.requestQueue = []
         this.root = root
+        this.floorStatus = new Map();
     }
 }
 
@@ -75,8 +75,8 @@ class LiftSimulationEngine {
                             <div>FLR ${idx == 0?"G":idx}</div>
                         </div>
                         <div class="nth-floor-btn">
-                            <button class="floor-btn up-btn ${(basement === false && idx===floors-1) || (basement === true && idx === 0)?'hide':''}" key=${idx} id="up-${idx}-btn">Up</button>
-                            <button class="floor-btn down-btn ${(basement === false && idx===0) || (basement === true && idx === floors-1 )? 'hide':''}" key=${idx} id="down-${idx}-btn">Down</button>
+                            <button class="floor-btn up-btn ${(basement === false && idx===floors-1) || (basement === true && idx === 0)?'hide':''}" floor=${idx} btn="up">Up</button>
+                            <button class="floor-btn down-btn ${(basement === false && idx===0) || (basement === true && idx === floors-1 )? 'hide':''}" floor=${idx} btn="down">Down</button>
                         </div>
                     </div>
                     ${idx===0?liftSetup:""}
@@ -95,11 +95,31 @@ class LiftSimulationEngine {
         })
     }
 
+    getNearestLift(currentFloor){
+
+        let distance = this.dataStore.floors + 1;
+        let lift = -1;
+
+        this.dataStore.liftStatus.forEach((ls, idx)=>{
+            if(ls.status === Status.idle && Math.abs(ls.floor - currentFloor) < distance){
+                distance = Math.abs(ls.floor - currentFloor);
+                lift = idx;
+            }
+        })
+
+        if(distance === this.dataStore.floors + 1 && lift === -1){
+            return -1;
+        }
+
+        return lift;
+    }
+
+
     nextMovingLiftConfig(currentFloor){
 
-        const lift = this.dataStore.liftQueue.shift();
+        const lift = this.getNearestLift(currentFloor);
         
-        if(lift === undefined){
+        if(lift === -1){
             return;
         }
 
@@ -159,7 +179,7 @@ class LiftSimulationEngine {
                     this.updateLiftStatus(lift, {
                         status: "idle",
                     })
-                    this.dataStore.liftQueue.unshift(lift);
+                    this.dataStore.floorStatus.delete(currentFloor);
                 })
                 return;
             }
@@ -171,14 +191,27 @@ class LiftSimulationEngine {
                 this.updateLiftStatus(lift, {
                     status: "idle",
                 })
-                this.dataStore.liftQueue.unshift(lift);
+                this.dataStore.floorStatus.delete(currentFloor);
             }).then(res=>
                 resolve(`Processed request for floor ${currentFloor}, lift used ${lift+1}, now at ${this.dataStore.liftStatus[lift].floor}`)
             ).catch(err=>reject(err))})
     }
 
     moveLift = async (e) => {
-        const currentFloor = Number(e.target.getAttribute("key"));
+        const currentFloor = Number(e.target.getAttribute("floor"));
+        const btnClicked = e.target.getAttribute("btn");
+
+        if(this.dataStore.floorStatus.has(currentFloor)){
+            if (this.dataStore.floorStatus.get(currentFloor).has(btnClicked)){
+                return;
+            }
+            this.dataStore.floorStatus.get(currentFloor).add(btnClicked);
+        }else{
+            const btnClickedSet = new Set();
+            btnClickedSet.add(btnClicked);
+            this.dataStore.floorStatus.set(currentFloor, btnClickedSet);
+        }
+
         this.dataStore.requestQueue.push(currentFloor);
 
         try{
