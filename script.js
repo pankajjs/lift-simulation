@@ -108,7 +108,7 @@ class LiftSimulationEngine {
         })
 
         if(distance === this.dataStore.floors + 1 && lift === -1){
-            return -1;
+            return this.dataStore.liftStatus.findIndex((ls, _)=>currentFloor === ls.floor);
         }
 
         return lift;
@@ -202,7 +202,7 @@ class LiftSimulationEngine {
         const btnClicked = e.target.getAttribute("btn");
 
         if(this.dataStore.floorStatus.has(currentFloor)){
-            return;;
+            return;
         }
                 
         this.dataStore.floorStatus.set(currentFloor, btnClicked);
