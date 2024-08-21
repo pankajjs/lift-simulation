@@ -101,14 +101,14 @@ class LiftSimulationEngine {
         let lift = -1;
 
         this.dataStore.liftStatus.forEach((ls, idx)=>{
-            if(ls.status === Status.idle && ls.floor !== currentFloor && Math.abs(ls.floor - currentFloor) < distance){
+            if(currentFloor > 0 && ls.status === Status.idle && Math.abs(ls.floor - currentFloor) < distance){
                 distance = Math.abs(ls.floor - currentFloor);
                 lift = idx;
             }
         })
 
         if(distance === this.dataStore.floors + 1 && lift === -1){
-            return this.dataStore.liftStatus.findIndex((ls, _)=>currentFloor === ls.floor);
+            return this.dataStore.liftStatus.findIndex((ls, _)=>currentFloor === 0 && ls.floor !== currentFloor && ls.status === Status.idle);
         }
 
         return lift;
