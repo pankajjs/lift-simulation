@@ -155,7 +155,7 @@ class LiftSimulationEngine {
     move(){
         return new Promise(async (resolve, reject)=>{
             const currentFloor = this.dataStore.requestQueue.shift();
-        
+
             if(currentFloor === undefined){
                 reject("No request left to perform");
                 return;
@@ -164,13 +164,13 @@ class LiftSimulationEngine {
             const config = this.nextMovingLiftConfig(currentFloor);
             
             if(config === undefined){
-                this.dataStore.requestQueue.push(currentFloor);
+                this.dataStore.requestQueue.unshift(currentFloor);
                 reject(`Failed to process request for ${currentFloor} floor`);
                 return;
             }
                         
             const {direction, finalLiftPos, initialLiftPos, lift} = config
-    
+
             if(currentFloor === this.dataStore.liftStatus[lift].floor){
                 await this.changeDoorPos(this.dataStore.initialDoorPos, this.dataStore.finalDoorPos, Action.open, lift)
                 this.changeDoorPos(this.dataStore.finalDoorPos, this.dataStore.initialDoorPos, Action.close, lift)
