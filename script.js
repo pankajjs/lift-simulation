@@ -101,7 +101,7 @@ class LiftSimulationEngine {
         let lift = -1;
 
         this.dataStore.liftStatus.forEach((ls, idx)=>{
-            if(ls.status === Status.idle && Math.abs(ls.floor - currentFloor) < distance){
+            if(ls.status === Status.idle && ls.floor !== currentFloor && Math.abs(ls.floor - currentFloor) < distance){
                 distance = Math.abs(ls.floor - currentFloor);
                 lift = idx;
             }
@@ -202,16 +202,10 @@ class LiftSimulationEngine {
         const btnClicked = e.target.getAttribute("btn");
 
         if(this.dataStore.floorStatus.has(currentFloor)){
-            if (this.dataStore.floorStatus.get(currentFloor).has(btnClicked)){
-                return;
-            }
-            this.dataStore.floorStatus.get(currentFloor).add(btnClicked);
-        }else{
-            const btnClickedSet = new Set();
-            btnClickedSet.add(btnClicked);
-            this.dataStore.floorStatus.set(currentFloor, btnClickedSet);
+            return;;
         }
-
+                
+        this.dataStore.floorStatus.set(currentFloor, btnClicked);
         this.dataStore.requestQueue.push(currentFloor);
 
         try{
