@@ -100,16 +100,23 @@ class LiftSimulationEngine {
         let distance = this.dataStore.floors + 1;
         let lift = -1;
 
+
+        if(currentFloor === 0){
+            const firstLiftNotAtCurrentFloor = this.dataStore.liftStatus.findIndex((ls, _)=>ls.status === Status.idle && ls.floor !== currentFloor);
+            
+            if(firstLiftNotAtCurrentFloor === -1){
+                return 0;
+            }
+
+            return firstLiftNotAtCurrentFloor;
+        }
+
         this.dataStore.liftStatus.forEach((ls, idx)=>{
-            if(currentFloor > 0 && ls.status === Status.idle && Math.abs(ls.floor - currentFloor) < distance){
+            if(currentFloor !== ls.floor && ls.status === Status.idle && Math.abs(ls.floor - currentFloor) < distance){
                 distance = Math.abs(ls.floor - currentFloor);
                 lift = idx;
             }
         })
-
-        if(distance === this.dataStore.floors + 1 && lift === -1){
-            return this.dataStore.liftStatus.findIndex((ls, _)=>currentFloor === 0 && ls.floor !== currentFloor && ls.status === Status.idle);
-        }
 
         return lift;
     }
