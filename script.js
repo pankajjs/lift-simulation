@@ -261,12 +261,12 @@ class LiftSimulationEngine {
                 }else{
                     if(this.liftStatus[lift].destFloor === destFloor){
                         /**
-                         * Lift is not idle and moving towards to dest floor
+                         * Lift is not idle and moving towards dest floor
                          */
                         return;
                     }else{
                         /**
-                         * Lift is not idle and not moving towars dest floor
+                         * Lift is not idle and not moving towards dest floor
                          */
                         return;
                     }
