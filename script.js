@@ -3,7 +3,6 @@
 const Status = {
     moving: "moving",
     idle: "idle",
-    closed: "closed",
     opened: "opened",
     reached: "reached"
 }
@@ -18,223 +17,78 @@ const Direction = {
     down: "down",
     none: "none",
 }
-
-class DataStore {
-    constructor(lifts, floors, root){
-        this.basement = floors < 0? true: false
-        this.floors = Math.abs(floors - 0) + 1;
-        this.lifts = lifts;
-        this.floorDiffInPixel = -160;
-        this.doorSpeed = 156.25; //ms
-        this.liftSpeed = 12.5; //ms
-        this.finalDoorPos = 8
-        this.initialDoorPos = 24
-        this.liftStatus = Array(this.lifts).fill().map((_, idx)=>{
-            return {"floor": 0,"status": Status.idle, "currentPos": 0}
-        })
-        this.requestQueue = []
-        this.root = root
-        this.floorStatus = new Map();
-    }
-}
-
 class LiftSimulationEngine {
 
-    constructor(dataStore){
-        this.dataStore = dataStore;
+    constructor(lifts, floors, root) {
+        this.basement =  floors < 0 ? true: false,
+        this.floors = Math.abs(floors) + 1,
+        this.lifts = lifts,
+        this.floorDiffInPixel = -160,
+        this.doorSpeed = 156.25,
+        this.liftSpeed = 12.5,
+        this.finalDoorPos = 8,
+        this.initialDoorPos = 24,
+        this.liftStatus = Array(lifts).fill().map((_, idx)=>{
+            return {
+                currentFloor: 0, destFloor: undefined, status: Status.idle, currentPos: 0
+            }
+        }),
+        this.requestQueue = [],
+        this.root = root,
+        this.cleanUp = []
     }
-    setup(){
-        const {floors, basement, lifts} = this.dataStore;
+
+    start() {
         const setup = document.createElement("div")
 
-        if(basement === false){
-            setup.classList.add("reverse");
-        }else{
-            setup.classList.add("normal");
+        if (this.basement === false) {
+            setup.classList.add("reverse")
+        } else {
+            setup.classList.add("normal")
         }
 
         const liftSetup = `<div class="lifts">
-        ${
-            Array(lifts).fill().map((_, idx)=>{
-                return `<div class="nth-lift-setup" id="lift-${idx}-setup">
-                    <div class="lift-boundary">
-                        <div class="door-left-part"></div>
-                        <div class="door-right-part"></div>
-                    </div>
-                </div>`
-            }).join("")
-        }
-        </div>`
+            ${Array(this.lifts).fill().map((_, idx) => {
+                    return `<div class="nth-lift-setup" id="lift-${idx}-setup">
+                        <div class="lift-boundary">
+                            <div class="door-left-part"></div>
+                            <div class="door-right-part"></div>
+                        </div>
+                    </div>`
+                }).join("")}
+            </div>`
 
         const floorSetup = `<div class="floors">
-        ${
-            Array(floors).fill().map((_, idx)=>{
+            ${Array(this.floors).fill().map((_, idx) => {
                 return `<div class="nth-floor-setup" id="floor-${idx}-setup">
                     <div class="nth-floor-btn-setup">
                         <div class="floor-mark">
-                            <div>FLR ${idx == 0?"G":idx}</div>
+                            <div>FLR ${idx == 0 ? "G" : idx}</div>
                         </div>
                         <div class="nth-floor-btn">
-                            <button class="floor-btn up-btn ${(basement === false && idx===floors-1) || (basement === true && idx === 0)?'hide':''}" floor=${idx} btn="up">Up</button>
-                            <button class="floor-btn down-btn ${(basement === false && idx===0) || (basement === true && idx === floors-1 )? 'hide':''}" floor=${idx} btn="down">Down</button>
+                            <button class="floor-btn up-btn ${(this.basement === false && idx === this.floors - 1) || (this.basement === true && idx === 0) ? 'hide' : ''}" floor=${idx} btn="up">Up</button>
+                            <button class="floor-btn down-btn ${(this.basement === false && idx === 0) || (this.basement === true && idx === this.floors - 1) ? 'hide' : ''}" floor=${idx} btn="down">Down</button>
                         </div>
                     </div>
-                    ${idx===0?liftSetup:""}
+                    ${idx === 0 ? liftSetup : ""}
                 </div>`
-            }).join("")
-        }
-        </div>`;
+            }).join("")}
+            </div>`
 
-        setup.innerHTML = floorSetup;
-        this.dataStore.root.append(setup)
+        setup.innerHTML = floorSetup
+        this.root.append(setup)
 
-        const floorBtns = document.querySelectorAll(".floor-btn");
-
-        floorBtns.forEach((floorBtn, _)=>{
-            floorBtn.addEventListener("click", this.moveLift);
+        const floorBtns = document.querySelectorAll(".floor-btn")
+        floorBtns.forEach((floorBtn, _) => {
+            floorBtn.addEventListener("click", this.processFloorRequest)
         })
-    }
-
-    getNearestLift(currentFloor){
-
-        let distance = this.dataStore.floors + 1;
-        let lift = -1;
-
-
-        if(currentFloor === 0){
-            const firstLiftNotAtCurrentFloor = this.dataStore.liftStatus.findIndex((ls, _)=>ls.status === Status.idle && ls.floor !== currentFloor);
-            
-            if(firstLiftNotAtCurrentFloor === -1){
-                return 0;
-            }
-
-            return firstLiftNotAtCurrentFloor;
-        }
-
-        this.dataStore.liftStatus.forEach((ls, idx)=>{
-            if(currentFloor !== ls.floor && ls.status === Status.idle && Math.abs(ls.floor - currentFloor) < distance){
-                distance = Math.abs(ls.floor - currentFloor);
-                lift = idx;
-            }
-        })
-
-        return lift;
-    }
-
-
-    nextMovingLiftConfig(currentFloor){
-
-        const lift = this.getNearestLift(currentFloor);
-        
-        if(lift === -1){
-            return;
-        }
-
-        let direction = 0;
-        
-        if(this.dataStore.liftStatus[lift].floor < currentFloor) {
-            if(this.dataStore.basement === true) direction = Direction.down
-            else direction = Direction.up;
-        }else{
-            if(this.dataStore.basement === true) direction = Direction.up
-            else direction = Direction.down;
-        }
-        
-        const floorDiff = this.dataStore.floorDiffInPixel;
-        const initialLiftPos = this.dataStore.liftStatus[lift].currentPos;
-        const dist = Math.abs(this.dataStore.liftStatus[lift].floor - currentFloor);
-        let finalLiftPos = initialLiftPos;
-        
-        if(direction === Direction.down){
-            finalLiftPos += Math.abs(dist*floorDiff)
-        }else if(direction === Direction.up){
-            finalLiftPos += dist*floorDiff
-        }
-
-        return {
-            initialLiftPos,
-            finalLiftPos,
-            direction,
-            lift
-        }
-    }
-    
-    move(){
-        return new Promise(async (resolve, reject)=>{
-            const currentFloor = this.dataStore.requestQueue.shift();
-
-            if(currentFloor === undefined){
-                reject("No request left to perform");
-                return;
-            }
-    
-            const config = this.nextMovingLiftConfig(currentFloor);
-            
-            if(config === undefined){
-                this.dataStore.requestQueue.unshift(currentFloor);
-                reject(`Failed to process request for ${currentFloor} floor`);
-                return;
-            }
-                        
-            const {direction, finalLiftPos, initialLiftPos, lift} = config
-
-            if(currentFloor === this.dataStore.liftStatus[lift].floor){
-                await this.changeDoorPos(this.dataStore.initialDoorPos, this.dataStore.finalDoorPos, Action.open, lift)
-                this.changeDoorPos(this.dataStore.finalDoorPos, this.dataStore.initialDoorPos, Action.close, lift)
-                .then(res=>{
-                    resolve(`Processed request for floor ${currentFloor}, lift used ${lift+1}, now at ${this.dataStore.liftStatus[lift].floor}`)
-                    this.updateLiftStatus(lift, {
-                        status: "idle",
-                    })
-                    this.dataStore.floorStatus.delete(currentFloor);
-                })
-                return;
-            }
-
-            await this.changeLiftPos(initialLiftPos, finalLiftPos, lift, direction, currentFloor)
-            await this.changeDoorPos(this.dataStore.initialDoorPos, this.dataStore.finalDoorPos, Action.open, lift)
-            this.changeDoorPos(this.dataStore.finalDoorPos, this.dataStore.initialDoorPos, Action.close, lift)
-            .then(res=>{
-                this.updateLiftStatus(lift, {
-                    status: "idle",
-                })
-                this.dataStore.floorStatus.delete(currentFloor);
-            }).then(res=>
-                resolve(`Processed request for floor ${currentFloor}, lift used ${lift+1}, now at ${this.dataStore.liftStatus[lift].floor}`)
-            ).catch(err=>reject(err))})
-    }
-
-    moveLift = async (e) => {
-        const currentFloor = Number(e.target.getAttribute("floor"));
-        const btnClicked = e.target.getAttribute("btn");
-
-        if(this.dataStore.floorStatus.has(currentFloor)){
-            return;
-        }
-                
-        this.dataStore.floorStatus.set(currentFloor, btnClicked);
-        this.dataStore.requestQueue.push(currentFloor);
-
-        try{
-            while(this.dataStore.requestQueue.length > 0){
-                let response = await this.move()
-                console.log(response);
-                if(this.dataStore.requestQueue.length === 1){
-                    response = await this.move()
-                    console.log(response);
-                    break;
-                }
-            }
-        }catch(err){
-            console.log(err);
-        }
     }
 
     updateLiftStatus(lift, status){
-        this.dataStore.liftStatus[lift] = {...this.dataStore.liftStatus[lift], ...status}
+        this.liftStatus[lift] = {...this.liftStatus[lift], ...status}
     }
 
-    changeDoorPos(initialDoorPos, finalDoorPos, action, lift){
+    changeDoorPos(action, lift){
         return new Promise((resolve, reject)=>{
             const liftDiv = document.getElementById(`lift-${lift}-setup`);
 
@@ -250,6 +104,9 @@ class LiftSimulationEngine {
                 reject(`Lift ${lift}'s doors are not found`)
                 return;
             }
+
+            const initialDoorPos = Action.open === action ? this.initialDoorPos : this.finalDoorPos;
+            const finalDoorPos = Action.open === action ? this.finalDoorPos: this.initialDoorPos;
             
             let initialPos = initialDoorPos;
             let finalPos = finalDoorPos;
@@ -258,6 +115,7 @@ class LiftSimulationEngine {
             clearInterval(id);
             
             id = setInterval(()=>{
+                
                 if (Math.abs(initialPos - finalPos) > Math.abs(initialDoorPos - finalDoorPos)){
                     reject(`Alert! Lift ${lift} doors are not working`)
                     return;
@@ -267,7 +125,8 @@ class LiftSimulationEngine {
                     clearInterval(id);
                     if(Action.close === action) {
                         this.updateLiftStatus(lift, {
-                            status: Status.closed
+                            status: Status.idle,
+
                         })
                         resolve(`Lift ${lift} doors are closed`);
                     }
@@ -289,11 +148,13 @@ class LiftSimulationEngine {
                     })
                 }
                 // to open/close door in 2.5 sec having distance 16px, excute the interval in 2500/16 ms
-            }, this.dataStore.doorSpeed);
+            }, this.doorSpeed);
+
+            this.cleanUp.push(id);
         })
     }
     
-    changeLiftPos(initialLiftPos, finalLiftPos, lift, direction, currentFloor){
+    changeLiftPos(initialLiftPos, finalLiftPos, lift, direction){
         return new Promise((resolve, reject)=>{
             const liftDiv = document.getElementById(`lift-${lift}-setup`);
             
@@ -305,6 +166,7 @@ class LiftSimulationEngine {
             let intialPos = initialLiftPos;
             let finalPos = finalLiftPos;
             let id = null;
+            const destFloor = this.liftStatus[lift].destFloor;
 
             clearInterval(id);
             
@@ -318,11 +180,12 @@ class LiftSimulationEngine {
                     clearInterval(id);
                     this.updateLiftStatus(lift, {
                         currentPos: finalPos,
-                        floor: currentFloor,
+                        currentFloor: destFloor,
                         status: Status.reached,
                         direction: Direction.none,
+                        destFloor: undefined,
                     })
-                    resolve(`Lift ${lift} reached at ${currentFloor} floor`)
+                    resolve(`Lift ${lift} reached at ${destFloor} floor`)
                 } else {
                     
                     intialPos = direction === Direction.up? intialPos - 1: intialPos + 1;  
@@ -332,13 +195,151 @@ class LiftSimulationEngine {
                     this.updateLiftStatus(lift, {
                         status: Status.moving,
                         direction: direction,
-                        currentPos: intialPos
+                        currentPos: intialPos,
+                        destFloor: destFloor
                     })
                 }
-            }, this.dataStore.liftSpeed)
+            }, this.liftSpeed);
+
+            this.cleanUp.push(id);
         })
     }
+
+    move() {
+        return new Promise(async (resolve, reject) => {
+            const destFloor = this.requestQueue.shift()
+            
+            const lift = this.getNearestLift(destFloor);
+
+            if(lift === -1){
+                this.requestQueue.unshift(destFloor);
+                reject(`Failed to process request for floor ${destFloor} at the moment.`)
+                return;
+            }
+
+            const {initialLiftPos, finalLiftPos, direction} = this.getNearestLiftInfo(lift, destFloor);
+
+            if(this.liftStatus[lift].status === Status.idle){
+                if(this.liftStatus[lift].currentFloor === destFloor){
+                    /**
+                     *  Lift is idle and on the dest floor
+                     */
+                    await this.changeDoorPos(Action.open, lift);
+                    await this.changeDoorPos(Action.close, lift);
+                    resolve(`Processed request for floor ${destFloor}`);
+                }else{
+                    /**
+                     * Lift is idle and not on the dest floor
+                     */
+                    this.liftStatus[lift].destFloor = destFloor;
+
+                    await this.changeLiftPos(initialLiftPos, finalLiftPos, lift, direction);
+                    await this.changeDoorPos(Action.open, lift);
+                    await this.changeDoorPos(Action.close, lift);
+
+                    resolve(`Processed request for floor ${destFloor}`);
+                    return;
+                }
+            }
+
+            if(this.liftStatus[lift].status !== Status.idle){
+                if(this.liftStatus[lift].status !== Status.moving){
+                    if(this.liftStatus[lift].currentFloor === destFloor){
+                        /**
+                         * Lift is not idle, not moving and on the dest floor
+                         */
+                        await this.changeDoorPos(Action.open, lift);
+                        await this.changeDoorPos(Action.close, lift);
+                        return;
+                    }else{
+                        /**
+                         * Lift is not idle, not moving and not on the dest floor
+                         */
+                        this.requestQueue.unshift(destFloor);
+                        return;
+                    }
+                }else{
+                    if(this.liftStatus[lift].destFloor === destFloor){
+                        /**
+                         * Lift is not idle and moving towards to dest floor
+                         */
+                        return;
+                    }else{
+                        /**
+                         * Lift is not idle and not moving towars dest floor
+                         */
+                        return;
+                    }
+                }
+            }
+        })
+    }
+
+
+    getNearestLiftInfo(lift, destFloor){
+        
+        let direction = "";
+        
+        if(this.liftStatus[lift].currentFloor < destFloor) {
+            if(this.basement === true) direction = Direction.down
+            else direction = Direction.up;
+        }else{
+            if(this.basement === true) direction = Direction.up
+            else direction = Direction.down;
+        }
+        
+        const floorDiff = this.floorDiffInPixel;
+        const initialLiftPos = this.liftStatus[lift].currentPos;
+        const dist = Math.abs(this.liftStatus[lift].currentFloor - destFloor);
+        let finalLiftPos = initialLiftPos;
+        
+        if(direction === Direction.down){
+            finalLiftPos += Math.abs(dist*floorDiff)
+        }else if(direction === Direction.up){
+            finalLiftPos += dist*floorDiff
+        }
+
+        return {
+            initialLiftPos,
+            finalLiftPos,
+            direction,
+        }
+    }
+
+    getNearestLift(destFloor){
+
+        let minimumDistance = this.floors + 1;
+        let lift = -1;
+
+        this.liftStatus.forEach((ls, idx)=>{
+            if(((ls.status !== Status.moving && ls.currentFloor === destFloor)
+                || (ls.status === Status.moving && ls.destFloor === destFloor) 
+                || ls.status === Status.idle) && Math.abs(ls.currentFloor - destFloor) < minimumDistance){
+                minimumDistance = Math.abs(ls.currentFloor - destFloor);
+                lift = idx;
+            }
+        })
+
+        return lift;
+    }
+
+    processFloorRequest = async (e) => {
+        const destFloor = Number(e.target.getAttribute("floor"))
+
+        this.requestQueue.push(destFloor)
+
+        try {
+            while (this.requestQueue.length > 0) {
+                // process every request
+                const response = await this.move();
+                console.log(response);
+            }
+        } catch (error) {
+            console.log(error)
+        }
+    }
 }
+
 
 const Form = `
 <form id="form">
@@ -359,6 +360,7 @@ root.innerHTML = Form;
 
 const form = document.getElementById("form")
 form.addEventListener("submit", onSubmit);
+let engine = null;
 
 function onSubmit(e){
     e.preventDefault();
@@ -375,15 +377,20 @@ function onSubmit(e){
         return;
     }
 
-    const dataStore = new DataStore(Math.ceil(lifts), Math.ceil(floors), root);
-    const engine = new LiftSimulationEngine(dataStore)
+    if(engine){
+        // cleaning previous intervals
+        engine.cleanUp.forEach((id, _)=>clearInterval(id));
+    }
+
+    engine = new LiftSimulationEngine(Math.ceil(lifts), Math.ceil(floors), root)
 
     const lastChild = root.lastChild;
+
     if(lastChild){
         root.lastChild.remove()
     }
 
-    engine.setup();
+    engine.start();
 }
 
 
