@@ -30,7 +30,8 @@ form {
 
 .submit-btn:hover {
     cursor: pointer;
-    background-color: #06D001;
+    background-color: #FFFF;
+    color: #000000;
 }
 
 .reverse, .normal {
@@ -107,13 +108,13 @@ form {
     background-color: #06D001;
 }
 .up-btn:hover {
-    background-color: #059212;
+    background-color: #a8fbaf;
 }
 .down-btn{
 background-color: #F4CE14;
 }
 .down-btn:hover {
-    background-color: #FFBF00;
+    background-color: #ffe69a;
 }
 
 .lifts {
