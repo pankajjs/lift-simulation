@@ -345,11 +345,11 @@ const Form = `
 <form id="form">
     <div class="form-item">
         <!-- <label for="floor">Floors</label> -->
-        <input type="text" id="floor" name="floor" placeholder="Floors"/>
+        <input type="number" id="floor" name="floor" placeholder="Floors"/>
     </div>
     <div class="form-item">
         <!-- <label for="lift">Lifts</label> -->
-        <input type="text" id="lift" name="lift" placeholder="Lifts"/>
+        <input type="number" id="lift" name="lift" placeholder="Lifts"/>
     </div>
     <button class="submit-btn" type="submit">Start</button>
 </form>
@@ -373,7 +373,10 @@ function onSubmit(e){
         alert("Must be a number");
         return;
     }else if(lifts <= 0){
-        alert("Must be greater than 0");
+        alert("Lifts must be greater than 0");
+        return;
+    }else if(floors == 0){
+        alert("Floors must be a non zero value");
         return;
     }
 
