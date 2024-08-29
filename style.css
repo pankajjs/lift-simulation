@@ -144,10 +144,16 @@ background-color: #F4CE14;
     display: flex;
     align-items: center;
     background-color: #1679AB;
+    justify-content: center;
 }
 
 .door-left-part, .door-right-part {
     border: .5px solid black;
     padding-top: 4rem;
     position: absolute;
+}
+.lift-inner-wall {
+    padding: 2rem 0px;
+    position: absolute;
+    background: #003e57;
 }

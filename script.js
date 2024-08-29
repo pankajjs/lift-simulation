@@ -1,9 +1,16 @@
 // alert("js")
+const floorDiffInPixel = -160
+const doorSpeed = 156.25
+const liftSpeed = 12.5
+const finalDoorPos = 8
+const initialDoorPos = 24
+const innerWallWidth = 32;
 
 const Status = {
     moving: "moving",
     idle: "idle",
     opened: "opened",
+    closed: "closed",
     reached: "reached"
 }
 
@@ -17,329 +24,470 @@ const Direction = {
     down: "down",
     none: "none",
 }
-class LiftSimulationEngine {
 
-    constructor(lifts, floors, root) {
-        this.basement =  floors < 0 ? true: false,
-        this.floors = Math.abs(floors) + 1,
-        this.lifts = lifts,
-        this.floorDiffInPixel = -160,
-        this.doorSpeed = 156.25,
-        this.liftSpeed = 12.5,
-        this.finalDoorPos = 8,
-        this.initialDoorPos = 24,
-        this.liftStatus = Array(lifts).fill().map((_, idx)=>{
+const handleCreateEngineState = (lifts, floors, root) => {
+    const engineState = {
+        basement: floors < 0? true:false,
+        floors: Math.abs(floors) + 1,
+        lifts: lifts,
+        liftStatus: Array(lifts).fill().map((_, i)=>{
             return {
-                currentFloor: 0, destFloor: undefined, status: Status.idle, currentPos: 0
+                currentFloor: 0, 
+                destFloor: undefined, 
+                status: Status.idle, 
+                currentPos: 0,
+                direction: Direction.none,
+                calledFor: Direction.none
             }
         }),
-        this.requestQueue = [],
-        this.root = root,
-        this.cleanUp = []
-    }
-
-    start() {
-        const setup = document.createElement("div")
-
-        if (this.basement === false) {
-            setup.classList.add("reverse")
-        } else {
-            setup.classList.add("normal")
-        }
-
-        const liftSetup = `<div class="lifts">
-            ${Array(this.lifts).fill().map((_, idx) => {
-                    return `<div class="nth-lift-setup" id="lift-${idx}-setup">
-                        <div class="lift-boundary">
-                            <div class="door-left-part"></div>
-                            <div class="door-right-part"></div>
-                        </div>
-                    </div>`
-                }).join("")}
-            </div>`
-
-        const floorSetup = `<div class="floors">
-            ${Array(this.floors).fill().map((_, idx) => {
-                return `<div class="nth-floor-setup" id="floor-${idx}-setup">
-                    <div class="nth-floor-btn-setup">
-                        <div class="floor-mark">
-                            <div>FLR ${idx == 0 ? "G" : idx}</div>
-                        </div>
-                        <div class="nth-floor-btn">
-                            <button class="floor-btn up-btn ${(this.basement === false && idx === this.floors - 1) || (this.basement === true && idx === 0) ? 'hide' : ''}" floor=${idx} btn="up">Up</button>
-                            <button class="floor-btn down-btn ${(this.basement === false && idx === 0) || (this.basement === true && idx === this.floors - 1) ? 'hide' : ''}" floor=${idx} btn="down">Down</button>
-                        </div>
-                    </div>
-                    ${idx === 0 ? liftSetup : ""}
-                </div>`
-            }).join("")}
-            </div>`
-
-        setup.innerHTML = floorSetup
-        this.root.append(setup)
-
-        const floorBtns = document.querySelectorAll(".floor-btn")
-        floorBtns.forEach((floorBtn, _) => {
-            floorBtn.addEventListener("click", this.processFloorRequest)
-        })
-    }
-
-    updateLiftStatus(lift, status){
-        this.liftStatus[lift] = {...this.liftStatus[lift], ...status}
-    }
-
-    changeDoorPos(action, lift){
-        return new Promise((resolve, reject)=>{
-            const liftDiv = document.getElementById(`lift-${lift}-setup`);
-
-            if(!liftDiv){
-                reject(`Lift ${lift} is not found`);
-                return;
-            }
-
-            const leftDoor = liftDiv.querySelector('.door-left-part');
-            const rightDoor = liftDiv.querySelector('.door-right-part');
-
-            if(!leftDoor || !rightDoor){
-                reject(`Lift ${lift}'s doors are not found`)
-                return;
-            }
-
-            const initialDoorPos = Action.open === action ? this.initialDoorPos : this.finalDoorPos;
-            const finalDoorPos = Action.open === action ? this.finalDoorPos: this.initialDoorPos;
-            
-            let initialPos = initialDoorPos;
-            let finalPos = finalDoorPos;
-            let id = null;
-
-            clearInterval(id);
-            
-            id = setInterval(()=>{
-                
-                if (Math.abs(initialPos - finalPos) > Math.abs(initialDoorPos - finalDoorPos)){
-                    reject(`Alert! Lift ${lift} doors are not working`)
-                    return;
-                }
-
-                if(initialPos === finalPos){
-                    clearInterval(id);
-                    if(Action.close === action) {
-                        this.updateLiftStatus(lift, {
-                            status: Status.idle,
-
-                        })
-                        resolve(`Lift ${lift} doors are closed`);
-                    }
-                    else {
-                        this.updateLiftStatus({
-                            status: Status.opened
-                        })
-                        resolve(`Lift ${lift} doors are opened`);
-                    };
-                }else{
-                    if(action === Action.close) initialPos++;
-                    else initialPos--;
-
-                    leftDoor.style.left = initialPos + 'px'
-                    rightDoor.style.right = initialPos + 'px'
-                    
-                    this.updateLiftStatus(lift, {
-                        status: action,
-                    })
-                }
-                // to open/close door in 2.5 sec having distance 16px, excute the interval in 2500/16 ms
-            }, this.doorSpeed);
-
-            this.cleanUp.push(id);
-        })
-    }
+        requestQueue: [],
+        root: root,
+        cleanUp: new Map(),
+    };
     
-    changeLiftPos(initialLiftPos, finalLiftPos, lift, direction){
-        return new Promise((resolve, reject)=>{
-            const liftDiv = document.getElementById(`lift-${lift}-setup`);
-            
-            if(!liftDiv){
-                reject(`Lift ${lift} is not found`);
-                return;
-            }
-            
-            let intialPos = initialLiftPos;
-            let finalPos = finalLiftPos;
-            let id = null;
-            const destFloor = this.liftStatus[lift].destFloor;
-
-            clearInterval(id);
-            
-            id = setInterval(()=>{
-                if(Math.abs(intialPos - finalPos) > Math.abs(initialLiftPos - finalLiftPos)){
-                    reject(`Alert! Lift ${lift} is not working.`);
-                    return;
-                }
-
-                if (intialPos === finalPos) {
-                    clearInterval(id);
-                    this.updateLiftStatus(lift, {
-                        currentPos: finalPos,
-                        currentFloor: destFloor,
-                        status: Status.reached,
-                        direction: Direction.none,
-                        destFloor: undefined,
-                    })
-                    resolve(`Lift ${lift} reached at ${destFloor} floor`)
-                } else {
-                    
-                    intialPos = direction === Direction.up? intialPos - 1: intialPos + 1;  
-                    
-                    liftDiv.style.top = intialPos + "px";
-
-                    this.updateLiftStatus(lift, {
-                        status: Status.moving,
-                        direction: direction,
-                        currentPos: intialPos,
-                        destFloor: destFloor
-                    })
-                }
-            }, this.liftSpeed);
-
-            this.cleanUp.push(id);
-        })
-    }
-
-    move() {
-        return new Promise(async (resolve, reject) => {
-            const destFloor = this.requestQueue.shift()
-            
-            const lift = this.getNearestLift(destFloor);
-
-            if(lift === -1){
-                this.requestQueue.unshift(destFloor);
-                reject(`Failed to process request for floor ${destFloor} at the moment.`)
-                return;
-            }
-
-            const {initialLiftPos, finalLiftPos, direction} = this.getNearestLiftInfo(lift, destFloor);
-
-            if(this.liftStatus[lift].status === Status.idle){
-                if(this.liftStatus[lift].currentFloor === destFloor){
-                    /**
-                     *  Lift is idle and on the dest floor
-                     */
-                    await this.changeDoorPos(Action.open, lift);
-                    await this.changeDoorPos(Action.close, lift);
-                    resolve(`Processed request for floor ${destFloor}`);
-                }else{
-                    /**
-                     * Lift is idle and not on the dest floor
-                     */
-                    this.liftStatus[lift].destFloor = destFloor;
-
-                    await this.changeLiftPos(initialLiftPos, finalLiftPos, lift, direction);
-                    await this.changeDoorPos(Action.open, lift);
-                    await this.changeDoorPos(Action.close, lift);
-
-                    resolve(`Processed request for floor ${destFloor}`);
-                    return;
-                }
-            }
-
-            if(this.liftStatus[lift].status !== Status.idle){
-                if(this.liftStatus[lift].status !== Status.moving){
-                    if(this.liftStatus[lift].currentFloor === destFloor){
-                        /**
-                         * Lift is not idle, not moving and on the dest floor
-                         */
-                        await this.changeDoorPos(Action.open, lift);
-                        await this.changeDoorPos(Action.close, lift);
-                        return;
-                    }else{
-                        /**
-                         * Lift is not idle, not moving and not on the dest floor
-                         */
-                        this.requestQueue.unshift(destFloor);
-                        return;
-                    }
-                }else{
-                    if(this.liftStatus[lift].destFloor === destFloor){
-                        /**
-                         * Lift is not idle and moving towards dest floor
-                         */
-                        return;
-                    }else{
-                        /**
-                         * Lift is not idle and not moving towards dest floor
-                         */
-                        return;
-                    }
-                }
-            }
-        })
-    }
+    return engineState;
+}
 
 
-    getNearestLiftInfo(lift, destFloor){
-        
-        let direction = "";
-        
-        if(this.liftStatus[lift].currentFloor < destFloor) {
-            if(this.basement === true) direction = Direction.down
-            else direction = Direction.up;
-        }else{
-            if(this.basement === true) direction = Direction.up
-            else direction = Direction.down;
-        }
-        
-        const floorDiff = this.floorDiffInPixel;
-        const initialLiftPos = this.liftStatus[lift].currentPos;
-        const dist = Math.abs(this.liftStatus[lift].currentFloor - destFloor);
-        let finalLiftPos = initialLiftPos;
-        
-        if(direction === Direction.down){
-            finalLiftPos += Math.abs(dist*floorDiff)
-        }else if(direction === Direction.up){
-            finalLiftPos += dist*floorDiff
-        }
+let engineState;
 
-        return {
-            initialLiftPos,
-            finalLiftPos,
-            direction,
-        }
-    }
-
-    getNearestLift(destFloor){
-
-        let minimumDistance = this.floors + 1;
-        let lift = -1;
-
-        this.liftStatus.forEach((ls, idx)=>{
-            if(((ls.status !== Status.moving && ls.currentFloor === destFloor)
-                || (ls.status === Status.moving && ls.destFloor === destFloor) 
-                || ls.status === Status.idle) && Math.abs(ls.currentFloor - destFloor) < minimumDistance){
-                minimumDistance = Math.abs(ls.currentFloor - destFloor);
-                lift = idx;
-            }
-        })
-
-        return lift;
-    }
-
-    processFloorRequest = async (e) => {
-        const destFloor = Number(e.target.getAttribute("floor"))
-
-        this.requestQueue.push(destFloor)
-
-        try {
-            while (this.requestQueue.length > 0) {
-                // process every request
-                const response = await this.move();
-                console.log(response);
-            }
-        } catch (error) {
-            console.log(error)
-        }
+const handleUpdateLiftStatus = (lift, status) => {
+    engineState.liftStatus[lift] = {
+        ...engineState.liftStatus[lift], ...status
     }
 }
 
+const handleChangeDoorPos = (action, lift, liftDiv) => {
+    return new Promise((resolve, reject)=>{
+        const leftDoor = liftDiv.querySelector(".door-left-part");
+        const rightDoor = liftDiv.querySelector(".door-right-part");
+        const liftInnerWall = liftDiv.querySelector(".lift-inner-wall");
+        
+        let initialPos = Action.open === action ? initialDoorPos : finalDoorPos;
+        let finalPos = Action.open === action ? finalDoorPos: initialDoorPos;
+        let id;
+
+        let initialWidth = Action.open === action?0:innerWallWidth;
+
+        clearInterval(id);
+        
+        id = setInterval(()=>{
+            if(Math.abs(initialPos - finalPos) > Math.abs(initialDoorPos - finalDoorPos)){
+                reject(`Alert! Lift ${lift} doors are not working`);
+                return;
+            }
+
+            if(initialPos === finalPos){
+                clearInterval(id);
+                engineState.cleanUp.delete(id);
+                if(Action.close === action){
+                    handleUpdateLiftStatus(lift, {
+                        status: Status.idle,
+                        calledFor: Direction.none
+                    })
+                    resolve(`Lift ${lift} doors are closed and lift is idle now.`);
+                    return;
+                }else{
+                    handleUpdateLiftStatus(lift, {
+                        status: Status.opened,
+                    })
+                    resolve(`Lift ${lift} doors are opened`);
+                    return;
+                }
+            }else{
+                if (action === Action.close) {
+                    initialPos++;
+                    initialWidth -= 2;
+                }
+                else {
+                    initialPos--;
+                    initialWidth += 2;
+                }
+
+                liftInnerWall.style.paddingLeft = initialWidth + 'px';
+                leftDoor.style.left = initialPos + 'px';
+                rightDoor.style.right = initialPos + 'px';
+
+                handleUpdateLiftStatus(lift, {
+                    status: action,
+                })
+            }
+        }, doorSpeed)
+
+        engineState.cleanUp.set(id, {floor:engineState.liftStatus[lift].currentFloor, lift:lift});
+    })
+}
+
+const handleChangeLiftPos = (info, lift, floor, calledFor, liftDiv) => {
+    return new Promise((resolve, reject)=>{
+
+        const {initialLiftPos, finalLiftPos, direction} = info;
+
+        let id;
+        let initialPos = initialLiftPos;
+        let finalPos = finalLiftPos;
+
+        clearInterval(id);
+
+        id = setInterval(()=>{
+            if(Math.abs(initialPos - finalPos) > Math.abs(initialLiftPos - finalLiftPos)){
+                reject(`Alert! Lift ${lift} is not working.`);
+                return;
+            }
+            
+            if (initialPos === finalPos) {
+                clearInterval(id);
+                engineState.cleanUp.delete(id);
+                handleUpdateLiftStatus(lift, {
+                    currentPos: finalPos,
+                    currentFloor: floor,
+                    status: Status.reached,
+                    direction: Direction.none,
+                    destFloor: undefined,
+                })
+                resolve(`Lift ${lift} reached at ${floor} floor`);
+                return;
+            }else {
+                
+                initialPos = direction === Direction.up? initialPos - 1: initialPos + 1;  
+                
+                liftDiv.style.top = initialPos + "px";
+
+                handleUpdateLiftStatus(lift, {
+                    status: Status.moving,
+                    direction: direction,
+                    currentPos: initialPos,
+                    destFloor: floor,
+                    calledFor: calledFor
+                })
+            }
+        }, liftSpeed);
+
+        engineState.cleanUp.set(id, {floor:floor, lift:lift});
+    })
+}
+
+const handleGetLiftInfo = (lift, floor) => {
+
+    let direction = Direction.none;
+    const {liftStatus, basement} = engineState;
+        
+    if(liftStatus[lift].currentFloor < floor) {
+        direction = basement ? Direction.down: Direction.up;
+    }else if(liftStatus[lift].currentFloor > floor){
+        direction = basement ? Direction.up : Direction.down;
+    }
+
+    const initialLiftPos = liftStatus[lift].currentPos;
+    let finalLiftPos = floorDiffInPixel*floor;
+    
+    if(basement){
+        finalLiftPos = Math.abs(finalLiftPos)
+    }
+
+    return {
+        initialLiftPos,
+        finalLiftPos,
+        direction,
+    }
+}
+
+const handleGetNearestLift = (floor, calledFor) => {
+    let lift = -1;
+    let minimumDistance = Infinity;
+
+    const floorPos = Math.abs(floor*floorDiffInPixel);
+    const {liftStatus, basement} = engineState;
+
+    liftStatus.forEach((ls, idx)=>{
+        const currentPos = Math.abs(ls.currentPos);
+        const diff = Math.abs(floorPos - currentPos);
+        if(((currentPos !== floorPos && Status.idle === ls.status) 
+            || (currentPos === floorPos && (ls.status === Status.idle || ls.status !== Status.moving))) 
+            && diff < minimumDistance){
+            minimumDistance = diff;
+            lift = idx;
+        }
+    })
+
+    liftStatus.forEach((ls, idx)=>{
+        const currentPos = Math.abs(ls.currentPos);
+        const diff = Math.abs(floorPos - currentPos);
+
+        if((calledFor === Direction.down
+            && ls.calledFor === Direction.down
+            && (basement?(currentPos < floorPos):(currentPos < floorPos && ls.destFloor === floor || currentPos > floorPos)))
+            || (calledFor === Direction.up 
+                && ls.calledFor === Direction.up
+                && (basement?(currentPos < floorPos && ls.destFloor === floor || currentPos > floorPos):(currentPos < floorPos))
+            )
+             && diff < minimumDistance){
+            minimumDistance = diff;
+            lift = idx;
+        }
+    })
+
+    return lift;
+}
+
+
+const handleMoveLift = () => {
+    return new Promise(async(resolve, reject)=>{
+        const {requestQueue, liftStatus, cleanUp } = engineState;
+        
+        const {floor, calledFor} = requestQueue.shift();
+
+        
+        const lift = handleGetNearestLift(floor, calledFor);
+
+        if(lift === -1){
+            setTimeout(()=>{
+                requestQueue.unshift({floor: floor, calledFor: calledFor});
+            }, 1000)
+            resolve(`Failed to process request for floor ${floor} at the moment`);
+            return;
+        }
+
+        const info = handleGetLiftInfo(lift, floor);
+        
+        const liftDiv = document.getElementById(`lift-${lift}-setup`);
+
+        const currentLiftInfo = liftStatus[lift];
+
+        const destFloor = currentLiftInfo.destFloor;
+
+        const status = currentLiftInfo.status;
+        const liftCalledFor = currentLiftInfo.calledFor;
+        const currentPos = Math.abs(currentLiftInfo.currentPos);
+        const floorPos = Math.abs((destFloor?destFloor:0)*floorDiffInPixel);
+        const newfloorPos = Math.abs(floor*floorDiffInPixel);
+
+        if(status === Status.idle){
+            await handleChangeLiftPos(info, lift, floor, calledFor, liftDiv);
+            await handleChangeDoorPos(Action.open, lift, liftDiv);
+            await handleChangeDoorPos(Action.close, lift, liftDiv);
+            resolve(`Processed request for floor ${floor}, called for ${calledFor} by lift ${lift}`);
+            return;
+        }
+
+        if(currentPos <= newfloorPos){
+            if(floor > destFloor){
+                // timen taken to reach the old dest floor + door movement
+                const diff = Math.abs(floorPos - currentPos);
+                let time = (diff / Math.abs(floorDiffInPixel))*2000;
+
+                if(status !== Status.moving && status !== Status.idle){
+                    time += 700;
+                }
+
+                setTimeout(()=>{
+                    console.log(`Lift request for floor ${floor}, called for ${calledFor} is in queue`);
+                    requestQueue.unshift({floor: floor, calledFor:calledFor});
+                }, time)
+                return;
+            }else if(floor < destFloor){
+
+                cleanUp.forEach((v, id)=>{
+                    if (v.lift === lift){
+                        clearTimeout(id);
+                        cleanUp.delete(id);
+                    }
+                })
+
+                // timen taken to reach the new dest floor + door movement
+                const diff = Math.abs(newfloorPos - currentPos);
+                let time = (diff / Math.abs(floorDiffInPixel))*2000;
+               
+             
+                if(status !== Status.moving && status !== Status.idle){
+                    time += 700;
+                }
+
+
+                console.log(`Lift will stop at the floor ${floor}`) 
+                setTimeout(()=>{
+                    console.log(`Lift request for floor ${destFloor}, called for ${liftCalledFor} is in queue`);
+                    requestQueue.unshift({floor: destFloor, calledFor: liftCalledFor})
+                }, time)
+
+                await handleChangeLiftPos(info, lift, floor, calledFor, liftDiv);
+                await handleChangeDoorPos(Action.open, lift, liftDiv);
+                await handleChangeDoorPos(Action.close, lift, liftDiv);
+                console.log("State", engineState)
+                resolve(`Processed request for floor ${floor}, called for ${calledFor} by lift ${lift}`);
+                return;
+
+            }
+        
+        }else {
+               
+                if(floor < destFloor){
+                    const diff = Math.abs(floorPos - currentPos);
+                    let time = (diff / Math.abs(floorDiffInPixel))*2000;
+
+                    if(status !== Status.moving && status !== Status.idle){
+                        time += 700;
+                    }
+
+                    setTimeout(()=>{
+                        console.log(`Lift request for floor ${floor}, called for ${calledFor} is in queue`);
+                        requestQueue.push({floor: floor, calledFor:calledFor});
+                    }, time)
+                    return;
+                }else if(floor > destFloor){
+                    cleanUp.forEach((v, id)=>{
+                        if (v.lift === lift){
+                            clearTimeout(id);
+                            cleanUp.delete(id);
+                        }
+                    })
+    
+                    console.log(`Lift will stop at the floor ${floor}`)
+
+                    // timen taken to reach the new dest floor + door movement
+                    const diff = Math.abs(newfloorPos - currentPos);
+                    let time =(diff     / Math.abs(floorDiffInPixel))*2000;
+
+                    
+                    if(status !== Status.moving && status !== Status.idle){
+                        time += 700;
+                    }
+
+                    setTimeout(()=>{
+                            console.log(`Lift request for floor ${destFloor}, called for ${liftCalledFor} is in queue`);
+                            requestQueue.unshift({floor: destFloor, calledFor: liftCalledFor})
+                    }, time)
+
+                    await handleChangeLiftPos(info, lift, floor, calledFor, liftDiv);
+                    await handleChangeDoorPos(Action.open, lift, liftDiv);
+                    await handleChangeDoorPos(Action.close, lift, liftDiv);
+                    resolve(`Processed request for floor ${floor}, called for ${calledFor} by lift ${lift}`);
+                    return;
+                }        
+            }
+    });
+}
+
+const handleFloorRequest = async (e)=> {
+    const floor = Number(e.target.getAttribute("floor"));
+    const calledFor = e.target.getAttribute("btn");
+    const {requestQueue} = engineState;
+
+    requestQueue.push({floor: floor, calledFor: calledFor});
+
+    try{
+        while(requestQueue.length > 0){
+            const response = await handleMoveLift();
+            console.log(response);
+
+        }
+    }catch(error){
+        console.log(error);
+    }
+
+}
+
+const handleCreateEngine = () => {
+    const engine = document.createElement("div");
+    engine.classList.add("engine");
+
+    const {lifts, basement, floors, root} = engineState;
+
+    if (basement === false) {
+        engine.classList.add("reverse")
+    } else {
+        engine.classList.add("normal")
+    }
+
+    const liftSetup = document.createElement("div");
+    liftSetup.classList.add("lifts");
+
+    Array(lifts).fill().forEach((_, idx)=>{
+
+        const nthLiftSetup = document.createElement("div");
+        nthLiftSetup.classList.add("nth-lift-setup");
+
+        const liftInnerWall = document.createElement("div");
+        liftInnerWall.classList.add("lift-inner-wall");
+        
+        const doorLeftPart = document.createElement("div");
+        doorLeftPart.classList.add("door-left-part");
+        
+        const doorRightPart = document.createElement("div");
+        doorRightPart.classList.add("door-right-part");
+        
+        const liftBoundary = document.createElement("div");
+        liftBoundary.classList.add("lift-boundary");
+        
+        liftBoundary.append(liftInnerWall, doorLeftPart, doorRightPart);
+
+        nthLiftSetup.setAttribute("id",`lift-${idx}-setup`);
+        nthLiftSetup.append(liftBoundary)
+        liftSetup.append(nthLiftSetup);
+    })
+    
+    const floorSetup = document.createElement("div");
+    floorSetup.classList.add("floors");
+   
+
+    Array(floors).fill().forEach((_, idx)=>{
+
+        const floorMarkInnerDiv = document.createElement("div");
+        floorMarkInnerDiv.innerHTML = `FLR ${idx === 0 ? "G": idx}`
+        
+        const floorMark = document.createElement("div");
+        floorMark.classList.add("floor-mark");
+        
+        floorMark.append(floorMarkInnerDiv);
+        
+        const nthFloorButton = document.createElement("div");
+        nthFloorButton.classList.add("nth-floor-btn");
+        
+        let floorButton = document.createElement("button");
+        floorButton.classList.add("floor-btn");
+        floorButton.classList.add("up-btn");
+        floorButton.setAttribute("btn", "up");
+        floorButton.setAttribute("floor", idx)
+        floorButton.classList.add((basement === false && idx === floors - 1) || (basement === true && idx === 0) ? 'hide' : 'unhide');
+        floorButton.innerHTML = "Up";
+        nthFloorButton.append(floorButton);
+        
+        floorButton = document.createElement("button");
+        floorButton.classList.add("floor-btn");
+        floorButton.classList.add("down-btn");
+        floorButton.setAttribute("btn", "down");
+        floorButton.setAttribute("floor", idx)
+        floorButton.classList.add((basement === false && idx === 0) || (basement === true && idx === floors - 1) ? 'hide' : 'unhide');
+        floorButton.innerHTML = "Down";
+        nthFloorButton.append(floorButton);
+        
+        const nthFloorButtonSetup = document.createElement("div");
+        nthFloorButtonSetup.classList.add("nth-floor-btn-setup");
+        
+        nthFloorButtonSetup.append(floorMark);
+        nthFloorButtonSetup.append(nthFloorButton);
+        
+        const nthFloorSetup = document.createElement("div");
+        nthFloorSetup.classList.add("nth-floor-setup");
+        nthFloorSetup.setAttribute("id", `floor-${idx}-setup`);
+        
+        nthFloorSetup.append(nthFloorButtonSetup)
+
+        if(idx === 0){
+            nthFloorSetup.append(liftSetup);
+        }
+        
+        floorSetup.append(nthFloorSetup);
+    })
+
+    engine.append(floorSetup);
+    root.append(engine)
+
+    const floorBtns = document.querySelectorAll(".floor-btn")
+    floorBtns.forEach((floorBtn, _) => {
+        floorBtn.addEventListener("click", handleFloorRequest)
+    })
+}
 
 const Form = `
 <form id="form">
@@ -360,7 +508,6 @@ root.innerHTML = Form;
 
 const form = document.getElementById("form")
 form.addEventListener("submit", onSubmit);
-let engine = null;
 
 function onSubmit(e){
     e.preventDefault();
@@ -372,28 +519,34 @@ function onSubmit(e){
     if(Number.isNaN(floors) || Number.isNaN(lifts)){
         alert("Must be a number");
         return;
-    }else if(lifts <= 0){
-        alert("Lifts must be greater than 0");
+    }else if(lifts < 0){
+        alert("Lifts must be positive number");
         return;
     }else if(floors == 0){
         alert("Floors must be a non zero value");
         return;
     }
 
-    if(engine){
-        // cleaning previous intervals
-        engine.cleanUp.forEach((id, _)=>clearInterval(id));
+    if(engineState){
+        console.log("cleaning animation..........")
+        
+        engineState.cleanUp.keys().forEach((id, _)=>{
+            clearInterval(id);
+            clearTimeout(id);
+            
+        })
+        
+        engineState.requestQueue = []
+        engineState.cleanUp.clear();
     }
 
-    engine = new LiftSimulationEngine(Math.ceil(lifts), Math.ceil(floors), root)
-
+    engineState = handleCreateEngineState(Math.ceil(lifts), Math.ceil(floors), root);
+    
     const lastChild = root.lastChild;
-
+    
     if(lastChild){
         root.lastChild.remove()
     }
 
-    engine.start();
+    handleCreateEngine()
 }
-
-
