@@ -192,8 +192,9 @@ const handleGetNearestLift = (floor, calledFor) => {
     const {liftStatus, basement} = engineState;
 
 
-    if(calledFor === Direction.up){
 
+    if(calledFor === Direction.up){
+    
         liftStatus.forEach((ls, idx)=>{
             const currentPos = Math.abs(ls.currentPos);
             const diff = Math.abs(floorPos - currentPos);
@@ -206,70 +207,14 @@ const handleGetNearestLift = (floor, calledFor) => {
                 lift = idx;
             }
 
-        })
-        // console.log("Lift from calledfor loop ", lift);
-
-
-        liftStatus.forEach((ls, idx)=>{
-            const currentPos = Math.abs(ls.currentPos);
-            const diff = Math.abs(floorPos - currentPos);
-            
-            if(ls.currentFloor === floor && ls.status === Status.moving && ls.calledFor === calledFor
-                 && diff < minimumDistance){
-                minimumDistance = diff;
-                lift = idx;
-            }
-        })
-
-        // console.log("lift from moving lift at current floor called for loop ",lift)
-
-        liftStatus.forEach((ls, idx)=>{
-            
-            const currentPos = Math.abs(ls.currentPos);
-            const diff = Math.abs(floorPos - currentPos);
-
-            if(ls.status === Status.idle && ls.currentFloor !== floor
-            && diff < minimumDistance){
-                minimumDistance = diff;
-                lift = idx;
-            }
-        })
-        // console.log("lift from idle lift not at current floor loop ",lift)
-
-        liftStatus.forEach((ls, idx)=>{
-            const currentPos = Math.abs(ls.currentPos);
-            const diff = Math.abs(floorPos - currentPos);
-            
-            if(ls.currentFloor === floor && ls.status === Status.idle
-                 && diff < minimumDistance){
-                minimumDistance = diff;
-                lift = idx;
-            }
-        })
-        // console.log("lift from idle lift at current floor loop ",lift)
-
-
-        liftStatus.forEach((ls, idx)=>{
-            
-            const currentPos = Math.abs(ls.currentPos);
-            const diff = Math.abs(floorPos - currentPos);
-
-            if(ls.status === Status.moving && ls.currentFloor !== floor && ls.destFloor === floor && ls.calledFor === calledFor
-            && diff < minimumDistance){
-                minimumDistance = diff;
-                lift = idx;
-            }
-        })
-        // console.log("lift from moving lift not at current floor loop ",lift)
-
-    
+        })        
     }else if(calledFor === Direction.down){
 
         liftStatus.forEach((ls, idx)=>{
             const currentPos = Math.abs(ls.currentPos);
             const diff = Math.abs(floorPos - currentPos);
 
-            if(ls.calledFor === calledFor && 
+            if(ls.calledFor === calledFor &&
                 (basement?(currentPos < floorPos && ls.destFloor >= floor):(ls.destFloor === floor && currentPos < floorPos) || (currentPos > floorPos))
                 && diff < minimumDistance
             ){
@@ -278,44 +223,59 @@ const handleGetNearestLift = (floor, calledFor) => {
             }
 
         })
-
-      
-        liftStatus.forEach((ls, idx)=>{
-            const currentPos = Math.abs(ls.currentPos);
-            const diff = Math.abs(floorPos - currentPos);
-            
-            if(ls.currentFloor === floor && ls.status === Status.moving && ls.calledFor === calledFor
-                 && diff < minimumDistance){
-                minimumDistance = diff;
-                lift = idx;
-            }
-        })
-
-
-
-        liftStatus.forEach((ls, idx)=>{
-            
-            const currentPos = Math.abs(ls.currentPos);
-            const diff = Math.abs(floorPos - currentPos);
-
-            if(ls.status === Status.idle && ls.currentFloor !== floor
-            && diff < minimumDistance){
-                minimumDistance = diff;
-                lift = idx;
-            }
-        })
-      
-        liftStatus.forEach((ls, idx)=>{
-            const currentPos = Math.abs(ls.currentPos);
-            const diff = Math.abs(floorPos - currentPos);
-            
-            if(ls.currentFloor === floor && ls.status === Status.idle
-                 && diff < minimumDistance){
-                minimumDistance = diff;
-                lift = idx;
-            }
-        })
     }
+
+    liftStatus.forEach((ls, idx)=>{
+        const currentPos = Math.abs(ls.currentPos);
+        const diff = Math.abs(floorPos - currentPos);
+        
+        if(ls.currentFloor === floor && ls.status === Status.moving && ls.calledFor === calledFor
+             && diff < minimumDistance){
+            minimumDistance = diff;
+            lift = idx;
+        }
+    })
+
+    // console.log("lift from moving lift at current floor called for loop ",lift)
+
+    liftStatus.forEach((ls, idx)=>{
+        
+        const currentPos = Math.abs(ls.currentPos);
+        const diff = Math.abs(floorPos - currentPos);
+
+        if(ls.status === Status.idle && ls.currentFloor !== floor
+        && diff < minimumDistance){
+            minimumDistance = diff;
+            lift = idx;
+        }
+    })
+    // console.log("lift from idle lift not at current floor loop ",lift)
+
+    liftStatus.forEach((ls, idx)=>{
+        const currentPos = Math.abs(ls.currentPos);
+        const diff = Math.abs(floorPos - currentPos);
+        
+        if(ls.currentFloor === floor && ls.status === Status.idle
+             && diff < minimumDistance){
+            minimumDistance = diff;
+            lift = idx;
+        }
+    })
+    // console.log("lift from idle lift at current floor loop ",lift)
+
+
+    liftStatus.forEach((ls, idx)=>{
+        
+        const currentPos = Math.abs(ls.currentPos);
+        const diff = Math.abs(floorPos - currentPos);
+
+        if(ls.status === Status.moving && ls.currentFloor !== floor && ls.destFloor === floor && ls.calledFor === calledFor
+        && diff < minimumDistance){
+            minimumDistance = diff;
+            lift = idx;
+        }
+    })
+    // console.log("lift from moving lift not at current floor loop ",lift)
     return lift;
 }
 
@@ -379,7 +339,7 @@ const handleMoveLift = () => {
         }
 
         if(currentPos <= newfloorPos){
-            if(floor >= destFloor){
+            if(floor > destFloor){
                 // timen taken to reach the old dest floor + door movement
                 const diff = Math.abs(floorPos - currentPos);
                 let time = (diff / Math.abs(floorDiffInPixel))*2000;
