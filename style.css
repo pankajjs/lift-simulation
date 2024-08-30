@@ -44,6 +44,8 @@ form {
     display: flex;
     margin-top: 5rem;
     margin-bottom: 2rem;
+    width: max-content;
+    min-width: 100%;;
 }
 
 .normal, .normal .floors {
@@ -57,8 +59,7 @@ form {
 .nth-floor-setup {
     height: 10rem;
     border-bottom: 1.5px solid black;
-    display: grid;
-    grid-template-columns: 25% 75%;
+    display: flex;
     gap: 1rem;
 }
 
@@ -121,6 +122,7 @@ background-color: #F4CE14;
     display: flex;
     gap: 1rem;
     align-items: end;
+    padding-right: 1rem;;
 }
 .nth-lift-setup {
     background-color: #59B4C3;
