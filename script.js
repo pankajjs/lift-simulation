@@ -274,8 +274,13 @@ const handleMoveLift = () => {
     return new Promise(async(resolve, reject)=>{
         const {requestQueue, liftStatus, cleanUp } = engineState;
         
-        const {floor, calledFor} = requestQueue.shift();
+        const floorInfo = requestQueue.shift();
+       
+        if(!floorInfo){
+            return;
+        }
 
+        const {floor, calledFor} = floorInfo;
         // console.log("Floor ", floor, "called for ", calledFor);
 
         let lift = handleGetNearestLift(floor, calledFor);
