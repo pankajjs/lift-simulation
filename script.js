@@ -215,11 +215,13 @@ const handleGetNearestLift = (floor, calledFor) => {
         })
     }
 
+    // console.log(lift);
+
     liftStatus.forEach((ls, idx)=>{
         const currentPos = Math.abs(ls.currentPos);
         const diff = Math.abs(floorPos - currentPos);
         
-        if(ls.currentFloor === floor && ls.status === Status.moving && ls.calledFor === calledFor
+        if(diff === 0 && ls.status === Status.moving && ls.calledFor === calledFor
              && diff < minimumDistance){
             minimumDistance = diff;
             lift = idx;
