@@ -1,10 +1,7 @@
 // alert("js")
 const floorDiffInPixel = -160
 const doorSpeed = 156.25
-const liftSpeed = 12.5
-const finalDoorPos = 8
-const initialDoorPos = 24
-const innerWallWidth = 32;
+const liftSpeed = 12.5;
 
 const Status = {
     moving: "moving",
@@ -55,59 +52,52 @@ const handleUpdateLiftStatus = (lift, status) => {
     }
 }
 
-const handleChangeDoorPos = (action, lift, liftDiv, calledFor) => {
+const handleChangeDoorPos = (lift, liftDiv, calledFor) => {
     return new Promise((resolve, reject)=>{
         const leftDoor = liftDiv.querySelector(".door-left-part");
         const rightDoor = liftDiv.querySelector(".door-right-part");
         const liftInnerWall = liftDiv.querySelector(".lift-inner-wall");
         
-        let initialPos = Action.open === action ? initialDoorPos : finalDoorPos;
-        let finalPos = Action.open === action ? finalDoorPos: initialDoorPos;
         let id;
 
-        let initialWidth = Action.open === action?0:innerWallWidth;
-
         clearInterval(id);
-        
-        id = setInterval(()=>{
-            if(Math.abs(initialPos - finalPos) > Math.abs(initialDoorPos - finalDoorPos)){
-                reject(`Alert! Lift ${lift} doors are not working`);
-                return;
-            }
 
-            if(initialPos === finalPos){
-                clearInterval(id);
-                engineState.cleanUp.delete(id);
-              
+        handleUpdateLiftStatus(lift, {
+            status: Status.moving,
+            calledFor: calledFor,
+        })
+        
+        leftDoor.classList.add("door-left-part-open-animation")
+        rightDoor.classList.add("door-right-part-open-animation");
+        liftInnerWall.classList.add("door-open-animation");
+
+        id = setTimeout(()=>{
+
+            leftDoor.classList.remove("door-left-part-open-animation");
+            rightDoor.classList.remove("door-right-part-open-animation");
+            liftInnerWall.classList.remove("door-open-animation");
+
+            leftDoor.classList.add("door-left-part-close-animation");
+            rightDoor.classList.add("door-right-part-close-animation");
+            liftInnerWall.classList.add("door-close-animation");
+
+            id = setTimeout(()=>{
+
+                leftDoor.classList.remove("door-left-part-close-animation");
+                rightDoor.classList.remove("door-right-part-close-animation");
+                liftInnerWall.classList.remove("door-close-animation");
+
                 handleUpdateLiftStatus(lift, {
                     status: Status.idle,
                     calledFor: Direction.none
                 })
                 resolve(`Lift ${lift} doors are closed and lift is idle now.`);
                 return;
+            }, 2500)
 
-            }else{
-                if (action === Action.close) {
-                    initialPos++;
-                    initialWidth -= 2;
-                }
-                else {
-                    initialPos--;
-                    initialWidth += 2;
-                }
+        }, 2500)
 
-                liftInnerWall.style.paddingLeft = initialWidth + 'px';
-                leftDoor.style.left = initialPos + 'px';
-                rightDoor.style.right = initialPos + 'px';
-
-                handleUpdateLiftStatus(lift, {
-                    status: Status.moving,
-                    calledFor: calledFor,
-                })
-            }
-        }, doorSpeed)
-
-        engineState.cleanUp.set(id, {floor:engineState.liftStatus[lift].currentFloor, lift:lift});
+        engineState.cleanUp.set(id, {lift:lift});
     })
 }
 
@@ -155,7 +145,7 @@ const handleChangeLiftPos = (info, lift, floor, calledFor, liftDiv) => {
             }
         }, liftSpeed);
 
-        engineState.cleanUp.set(id, {floor:floor, lift:lift});
+        engineState.cleanUp.set(id, {lift:lift});
     })
 }
 
@@ -324,16 +314,14 @@ const handleMoveLift = () => {
         };
 
         if(status === Status.idle && currentFloor === floor){
-            await handleChangeDoorPos(Action.open, lift, liftDiv, calledFor);
-            await handleChangeDoorPos(Action.close, lift, liftDiv, calledFor);
+            await handleChangeDoorPos(lift, liftDiv, calledFor);
             resolve(`Processed request for floor ${floor}, called for ${calledFor} by lift ${lift}`);
             return;
         }
 
         if(status === Status.idle && currentFloor !== floor){
             await handleChangeLiftPos(info, lift, floor, calledFor, liftDiv);
-            await handleChangeDoorPos(Action.open, lift, liftDiv, calledFor);
-            await handleChangeDoorPos(Action.close, lift, liftDiv, calledFor);
+            await handleChangeDoorPos(lift, liftDiv, calledFor);
             resolve(`Processed request for floor ${floor}, called for ${calledFor} by lift ${lift}`);
             return;
         }
@@ -379,8 +367,7 @@ const handleMoveLift = () => {
                 }, time)
 
                 await handleChangeLiftPos(info, lift, floor, calledFor, liftDiv);
-                await handleChangeDoorPos(Action.open, lift, liftDiv, calledFor);
-                await handleChangeDoorPos(Action.close, lift, liftDiv, calledFor);
+                await handleChangeDoorPos(lift, liftDiv, calledFor);
                 resolve(`Processed request for floor ${floor}, called for ${calledFor} by lift ${lift}`);
                 return;
 
@@ -427,8 +414,7 @@ const handleMoveLift = () => {
                     }, time)
 
                     await handleChangeLiftPos(info, lift, floor, calledFor, liftDiv);
-                    await handleChangeDoorPos(Action.open, lift, liftDiv, calledFor);
-                    await handleChangeDoorPos(Action.close, lift, liftDiv, calledFor);
+                    await handleChangeDoorPos(lift, liftDiv, calledFor);
                     resolve(`Processed request for floor ${floor}, called for ${calledFor} by lift ${lift}`);
                     return;
                 }        

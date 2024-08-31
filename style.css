@@ -159,3 +159,78 @@ background-color: #F4CE14;
     position: absolute;
     background: #003e57;
 }
+
+.door-left-part-open-animation{
+    animation: door-left-part-open-animation 2.5s forwards normal ease-in;
+}
+
+@keyframes door-left-part-open-animation {
+    from{
+        left: 24px;
+    }to{
+        left: 8px;;
+    }
+}
+
+.door-right-part-open-animation{
+    animation: door-right-part-open-animation 2.5s forwards normal ease-in;
+}
+
+@keyframes door-right-part-open-animation {
+    from{
+        right: 24px;
+    }to{
+        right: 8px;
+    }
+}
+.door-right-part-close-animation{
+    animation: door-right-part-close-animation 2.5s normal forwards  ease-out;
+}
+
+@keyframes door-right-part-close-animation {
+    from{
+        right: 8px;
+    }to{
+        right: 24px;
+    }
+}
+
+.door-left-part-close-animation{
+    animation: door-left-part-close-animation 2.5s normal forwards ease-out;
+}
+
+@keyframes door-left-part-close-animation {
+    from{
+        left: 8px;
+    }to{
+        left: 24px;
+    }
+}
+
+.door-open-animation{
+    animation: door-open-animation 2.5s normal forwards ease-in;
+}
+@keyframes door-open-animation {
+    from{
+        padding-left: 0px;
+    }to{
+        padding-left: 32px;
+    }
+}
+
+.door-close-animation{
+    animation: door-close-animation 2.5s normal forwards ease-out;
+}
+
+@keyframes door-close-animation{
+    from {
+        padding-left: 32px;
+    }to{
+        padding-left: 0px;
+    }
+}
+
+
+
+
+
