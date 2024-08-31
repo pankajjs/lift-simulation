@@ -584,7 +584,24 @@ floorInput.addEventListener("keyup", validateInput);
 liftInput.addEventListener("keyup", validateInput);
 
 function validateInput(e){
-    const value = Number(e.target.value);
+    let value = e.target.value;
+
+    if(value.length === 0) return;
+
+    if(value === " "){
+        alert("Must be a number");
+        e.target.value = ""
+        return;
+    }
+
+    if(value[0] === "-"){
+        value = Number(value.split("-")[1])
+    }else if(value[0] === "+"){
+        value = Number(value.split("+")[1])
+    }else{
+        value = Number(value)
+    }
+    
     if(Number.isNaN(value)){
         alert("Must be a number");
         e.target.value = ""
