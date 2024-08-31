@@ -561,11 +561,11 @@ const Form = `
 <form id="form">
     <div class="form-item">
         <!-- <label for="floor">Floors</label> -->
-        <input type="number" id="floor" name="floor" placeholder="Floors"/>
+        <input type="tel" id="floor" name="floor" placeholder="Floors"/>
     </div>
     <div class="form-item">
         <!-- <label for="lift">Lifts</label> -->
-        <input type="number" id="lift" name="lift" placeholder="Lifts"/>
+        <input type="tel" id="lift" name="lift" placeholder="Lifts"/>
     </div>
     <button class="submit-btn" type="submit">Start</button>
 </form>
@@ -574,8 +574,23 @@ const Form = `
 const root = document.getElementById("root");
 root.innerHTML = Form;
 
+const floorInput = document.getElementById("floor");
+const liftInput = document.getElementById("lift");
+
 const form = document.getElementById("form")
 form.addEventListener("submit", onSubmit);
+
+floorInput.addEventListener("keyup", validateInput);
+liftInput.addEventListener("keyup", validateInput);
+
+function validateInput(e){
+    const value = Number(e.target.value);
+    if(Number.isNaN(value)){
+        alert("Must be a number");
+        e.target.value = ""
+        return;
+    }
+}
 
 function onSubmit(e){
     e.preventDefault();
