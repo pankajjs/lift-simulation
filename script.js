@@ -22,7 +22,7 @@ const Direction = {
 const handleCreateEngineState = (lifts, floors, root) => {
     const engineState = {
         basement: floors < 0? true:false,
-        floors: Math.abs(floors) + 1,
+        floors: Math.abs(floors),
         lifts: lifts,
         liftStatus: Array(lifts).fill().map((_, _i)=>{
             return {
