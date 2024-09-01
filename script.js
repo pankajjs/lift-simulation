@@ -499,8 +499,8 @@ function onSubmit(e){
     if(Number.isNaN(floors) || Number.isNaN(lifts)){
         alert("Must be a number");
         return;
-    }else if(lifts < 0){
-        alert("Lifts must be positive number");
+    }else if(lifts <= 0){
+        alert("Lifts must be positive non zero value");
         return;
     }else if(floors == 0){
         alert("Floors must be a non zero value");
