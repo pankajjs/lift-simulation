@@ -276,7 +276,7 @@ const handleMoveLift = () => {
         if(lift === -1){
             setTimeout(()=>{
                 requestQueue.push({floor: floor, calledFor: calledFor});
-            }, 1000)
+            }, 500)
             resolve(`Failed to process request for floor ${floor} at the moment`);
             return;
         }
