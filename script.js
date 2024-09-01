@@ -452,12 +452,22 @@ liftInput.addEventListener("keyup", validateInput);
 
 function validateInput(e){
     let value = e.target.value;
+    const engine = document.querySelector(".engine");
 
-    if(value.length === 0) return;
+    if(value.length === 0) {
+        if(engine){
+            engine.remove()
+        }
+        return;
+    };
+
 
     if(value === " "){
         alert("Must be a number");
         e.target.value = ""
+        if(engine){
+            engine.remove()
+        }
         return;
     }
 
@@ -472,6 +482,9 @@ function validateInput(e){
     if(Number.isNaN(value)){
         alert("Must be a number");
         e.target.value = ""
+        if(engine){
+            engine.remove()
+        }
         return;
     }
 }
@@ -509,10 +522,10 @@ function onSubmit(e){
 
     engineState = handleCreateEngineState(Math.ceil(lifts), Math.ceil(floors), root);
     
-    const lastChild = root.lastChild;
+    const engine = document.querySelector(".engine");
     
-    if(lastChild){
-        root.lastChild.remove()
+    if(engine){
+        engine.remove()
     }
 
     handleCreateEngine()
