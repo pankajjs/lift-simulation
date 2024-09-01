@@ -134,8 +134,6 @@ const handleChangeLiftPos = (info, lift, floor, calledFor, liftDiv) => {
         let initialPos = initialLiftPos;
         let finalPos = finalLiftPos;
 
-        console.log(initialLiftPos, finalLiftPos, direction);
-
         clearInterval(id);
 
         handleDeleteLiftStatus(liftStatus.get(lift).currentFloor, lift);
