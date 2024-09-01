@@ -20,24 +20,35 @@ const Direction = {
 }
 
 const handleCreateEngineState = (lifts, floors, root) => {
+    const floorStatus = new Map();
+    const basement = floors < 0? true: false;
+    
+    for(let i = 0; i < Math.abs(floors); i++){
+        floorStatus.set(i, new Map());
+    }
+    const liftStatus = new Map();
+
+    for(let i = 0; i < lifts; i++){
+        liftStatus.set(i, {
+            currentFloor: 0, 
+            destFloor: undefined, 
+            status: Status.idle, 
+            currentPos: 0,
+            calledFor: "none"
+        })
+    }
+
+    floorStatus.set(0, new Map(liftStatus));
+
     const engineState = {
-        basement: floors < 0? true:false,
+        basement: basement,
         floors: Math.abs(floors),
         lifts: lifts,
-        liftStatus: Array(lifts).fill().map((_, _i)=>{
-            return {
-                currentFloor: 0, 
-                destFloor: undefined, 
-                status: Status.idle, 
-                currentPos: 0,
-                direction: Direction.none,
-                calledFor: Direction.none
-            }
-        }),
-
         requestQueue: [],
         root: root,
         cleanUp: new Map(),
+        liftStatus: liftStatus,
+        floorStatus: floorStatus,
     };
     
     return engineState;
@@ -47,29 +58,40 @@ const handleCreateEngineState = (lifts, floors, root) => {
 let engineState;
 
 const handleUpdateLiftStatus = (lift, status) => {
-    engineState.liftStatus[lift] = {
-        ...engineState.liftStatus[lift], ...status
-    }
+    const prevState= engineState.liftStatus.get(lift);
+    engineState.liftStatus.set(lift, {
+       ...prevState, ...status
+    })
 }
 
-const handleChangeDoorPos = (lift, liftDiv, calledFor) => {
+const handleDeleteLiftStatus = (floor, lift) => {
+    engineState.floorStatus.get(floor).delete(lift);
+}
+
+const handleAddLiftStatus = (floor, lift, status) => {
+    engineState.floorStatus.get(floor).set(lift, status);
+}
+
+
+const handleChangeDoorPos = (lift, liftDiv, floor, calledFor) => {
     return new Promise((resolve, reject)=>{
         const leftDoor = liftDiv.querySelector(".door-left-part");
         const rightDoor = liftDiv.querySelector(".door-right-part");
         const liftInnerWall = liftDiv.querySelector(".lift-inner-wall");
+        const {liftStatus} = engineState;
         
         let id;
 
         clearInterval(id);
-
-        handleUpdateLiftStatus(lift, {
-            status: Status.moving,
-            calledFor: calledFor,
-        })
         
         leftDoor.classList.add("door-left-part-open-animation")
         rightDoor.classList.add("door-right-part-open-animation");
         liftInnerWall.classList.add("door-open-animation");
+
+        handleUpdateLiftStatus(lift, {
+            status: Status.moving,
+            calledFor: calledFor
+        })
 
         id = setTimeout(()=>{
 
@@ -89,8 +111,10 @@ const handleChangeDoorPos = (lift, liftDiv, calledFor) => {
 
                 handleUpdateLiftStatus(lift, {
                     status: Status.idle,
-                    calledFor: Direction.none
+                    destFloor: undefined,
                 })
+
+                handleAddLiftStatus(floor, lift, liftStatus.get(lift));
                 resolve(`Lift ${lift} doors are closed and lift is idle now.`);
                 return;
             }, 2500)
@@ -103,14 +127,19 @@ const handleChangeDoorPos = (lift, liftDiv, calledFor) => {
 
 const handleChangeLiftPos = (info, lift, floor, calledFor, liftDiv) => {
     return new Promise((resolve, reject)=>{
-
+        const {liftStatus} = engineState;   
         const {initialLiftPos, finalLiftPos, direction} = info;
 
         let id;
         let initialPos = initialLiftPos;
         let finalPos = finalLiftPos;
 
+        console.log(initialLiftPos, finalLiftPos, direction);
+
         clearInterval(id);
+
+        handleDeleteLiftStatus(liftStatus.get(lift).currentFloor, lift);
+        handleAddLiftStatus(floor, lift, {...liftStatus.get(lift),status:Status.moving, calledFor:calledFor});
 
         id = setInterval(()=>{
             if(Math.abs(initialPos - finalPos) > Math.abs(initialLiftPos - finalLiftPos)){
@@ -124,8 +153,6 @@ const handleChangeLiftPos = (info, lift, floor, calledFor, liftDiv) => {
                 handleUpdateLiftStatus(lift, {
                     currentPos: finalPos,
                     currentFloor: floor,
-                    direction: Direction.none,
-                    destFloor: undefined,
                 })
                 resolve(`Lift ${lift} reached at ${floor} floor`);
                 return;
@@ -137,7 +164,6 @@ const handleChangeLiftPos = (info, lift, floor, calledFor, liftDiv) => {
 
                 handleUpdateLiftStatus(lift, {
                     status: Status.moving,
-                    direction: direction,
                     currentPos: initialPos,
                     destFloor: floor,
                     calledFor: calledFor
@@ -152,15 +178,15 @@ const handleChangeLiftPos = (info, lift, floor, calledFor, liftDiv) => {
 const handleGetLiftInfo = (lift, floor) => {
 
     let direction = Direction.none;
-    const {liftStatus, basement} = engineState;
-        
-    if(liftStatus[lift].currentFloor < floor) {
+    const {liftStatus,  basement} = engineState;
+
+    if(liftStatus.get(lift).currentFloor < floor) {
         direction = basement ? Direction.down: Direction.up;
-    }else if(liftStatus[lift].currentFloor > floor){
+    }else if(liftStatus.get(lift).currentFloor > floor){
         direction = basement ? Direction.up : Direction.down;
     }
 
-    const initialLiftPos = liftStatus[lift].currentPos;
+    const initialLiftPos = liftStatus.get(lift).currentPos;
     let finalLiftPos = floorDiffInPixel*floor;
     
     if(basement){
@@ -170,99 +196,60 @@ const handleGetLiftInfo = (lift, floor) => {
     return {
         initialLiftPos,
         finalLiftPos,
-        direction,
+        direction
     }
 }
+
 
 const handleGetNearestLift = (floor, calledFor) => {
     let lift = -1;
     let minimumDistance = Infinity;
 
     const floorPos = Math.abs(floor*floorDiffInPixel);
-    const {liftStatus, basement} = engineState;
+    const {floorStatus, liftStatus} = engineState;
 
-
-
-    if(calledFor === Direction.up){
+    const liftAtCurrentFloorInfo = floorStatus.get(floor).entries().find(([_, status], _idx)=> status.calledFor === calledFor)
     
-        liftStatus.forEach((ls, idx)=>{
-            const currentPos = Math.abs(ls.currentPos);
-            const diff = Math.abs(floorPos - currentPos);
-
-            if(ls.calledFor === calledFor && 
-                (!basement?(currentPos < floorPos && ls.destFloor >= floor):(currentPos>floorPos))
-                && diff < minimumDistance
-            ){
-                minimumDistance = diff;
-                lift = idx;
-            }
-
-        })        
-    }else if(calledFor === Direction.down){
-
-        liftStatus.forEach((ls, idx)=>{
-            const currentPos = Math.abs(ls.currentPos);
-            const diff = Math.abs(floorPos - currentPos);
-
-            if(ls.calledFor === calledFor &&
-                (basement?(currentPos < floorPos && ls.destFloor >= floor):(ls.destFloor === floor && currentPos < floorPos) || (currentPos > floorPos))
-                && diff < minimumDistance
-            ){
-                minimumDistance = diff;
-                lift = idx;
-            }
-
-        })
+    if(liftAtCurrentFloorInfo){
+        // console.log("lift from floor map", liftAtCurrentFloorInfo[0]);
+        return liftAtCurrentFloorInfo[0];
     }
 
-    // console.log(lift);
-
-    liftStatus.forEach((ls, idx)=>{
-        const currentPos = Math.abs(ls.currentPos);
-        const diff = Math.abs(floorPos - currentPos);
-        
-        if(diff === 0 && ls.status === Status.moving && ls.calledFor === calledFor
-             && diff < minimumDistance){
-            minimumDistance = diff;
-            lift = idx;
-        }
-    })
-
-    // console.log("lift from moving lift at current floor called for loop ",lift)
-
     liftStatus.forEach((ls, idx)=>{
         
         const currentPos = Math.abs(ls.currentPos);
         const diff = Math.abs(floorPos - currentPos);
 
-        if(ls.status === Status.idle && ls.currentFloor !== floor
+        if(ls.status === Status.idle && diff !== 0
         && diff < minimumDistance){
             minimumDistance = diff;
             lift = idx;
         }
     })
+
     // console.log("lift from idle lift not at current floor loop ",lift)
 
     liftStatus.forEach((ls, idx)=>{
         const currentPos = Math.abs(ls.currentPos);
         const diff = Math.abs(floorPos - currentPos);
         
-        if(ls.currentFloor === floor && ls.status === Status.idle
+        if(diff == 0 && (calledFor === ls.calledFor ||  ls.calledFor === Direction.none)
              && diff < minimumDistance){
             minimumDistance = diff;
             lift = idx;
         }
     })
-    // console.log("lift from idle lift at current floor loop ",lift)
 
+    // console.log("lift from idle lift or moving lift at current floor loop ",lift)
 
     liftStatus.forEach((ls, idx)=>{
         
         const currentPos = Math.abs(ls.currentPos);
         const diff = Math.abs(floorPos - currentPos);
 
-        if(ls.status === Status.moving && ls.currentFloor !== floor && ls.destFloor === floor && ls.calledFor === calledFor
-        && diff < minimumDistance){
+        if(ls.status === Status.moving && diff !== 0
+             && ls.calledFor === calledFor && ls.destFloor === floor
+             && diff < minimumDistance){
             minimumDistance = diff;
             lift = idx;
         }
@@ -274,7 +261,7 @@ const handleGetNearestLift = (floor, calledFor) => {
 
 const handleMoveLift = () => {
     return new Promise(async(resolve, reject)=>{
-        const {requestQueue, liftStatus, cleanUp } = engineState;
+        const {requestQueue, liftStatus} = engineState;
         
         const floorInfo = requestQueue.shift();
        
@@ -283,11 +270,8 @@ const handleMoveLift = () => {
         }
 
         const {floor, calledFor} = floorInfo;
-        // console.log("Floor ", floor, "called for ", calledFor);
 
         let lift = handleGetNearestLift(floor, calledFor);
-
-        // console.log("lift", lift)
 
         if(lift === -1){
             setTimeout(()=>{
@@ -301,131 +285,23 @@ const handleMoveLift = () => {
         
         const liftDiv = document.getElementById(`lift-${lift}-setup`);
 
-        const currentLiftInfo = liftStatus[lift];
+        const currentLiftInfo = liftStatus.get(lift);
 
-        let destFloor = currentLiftInfo.destFloor;
         const currentFloor = currentLiftInfo.currentFloor;
         const status = currentLiftInfo.status;
-        const liftCalledFor = currentLiftInfo.calledFor;
-        const currentPos = Math.abs(currentLiftInfo.currentPos);
-        const floorPos = Math.abs((destFloor?destFloor:0)*floorDiffInPixel);
-        const newfloorPos = Math.abs(floor*floorDiffInPixel);
-
-        // console.log("Status ", status, "lift called for ", liftCalledFor, "Current pos ", currentPos);
-        // console.log("dest floor pos ", floorPos, "new floor pos ", newfloorPos);
-        // console.log("dest floor ", destFloor, "current flr ", currentFloor);
-        
-        if(currentFloor === floor && status === Status.moving) {
-            resolve(`Processed request for floor ${floor}, called for ${calledFor} by lift ${lift}`);
-            return; 
-        };
 
         if(status === Status.idle && currentFloor === floor){
-            await handleChangeDoorPos(lift, liftDiv, calledFor);
+            await handleChangeDoorPos(lift, liftDiv, floor, calledFor);
             resolve(`Processed request for floor ${floor}, called for ${calledFor} by lift ${lift}`);
             return;
         }
 
         if(status === Status.idle && currentFloor !== floor){
             await handleChangeLiftPos(info, lift, floor, calledFor, liftDiv);
-            await handleChangeDoorPos(lift, liftDiv, calledFor);
+            await handleChangeDoorPos(lift, liftDiv, floor, calledFor);
             resolve(`Processed request for floor ${floor}, called for ${calledFor} by lift ${lift}`);
             return;
         }
-
-        if(currentPos <= newfloorPos){
-            if(floor > destFloor){
-                // timen taken to reach the old dest floor + door movement
-                const diff = Math.abs(floorPos - currentPos);
-                let time = (diff / Math.abs(floorDiffInPixel))*2000;
-
-                if(status !== Status.moving && status !== Status.idle){
-                    time += 700;
-                }
-
-                setTimeout(()=>{
-                    console.log(`Lift request for floor ${floor}, called for ${calledFor} is in queue`);
-                    requestQueue.push({floor: floor, calledFor:calledFor});
-                }, time)
-                return;
-            }else if(floor < destFloor){
-
-                cleanUp.forEach((v, id)=>{
-                    if (v.lift === lift){
-                        clearTimeout(id);
-                        cleanUp.delete(id);
-                    }
-                })
-
-                // timen taken to reach the new dest floor + door movement
-                const diff = Math.abs(newfloorPos - currentPos);
-                let time = (diff / Math.abs(floorDiffInPixel))*2000;
-               
-             
-                if(status !== Status.moving && status !== Status.idle){
-                    time += 700;
-                }
-
-
-                console.log(`Lift will stop at the floor ${floor}`) 
-                setTimeout(()=>{
-                    console.log(`Lift request for floor ${destFloor}, called for ${liftCalledFor} is in queue`);
-                    requestQueue.push({floor: destFloor, calledFor: liftCalledFor})
-                }, time)
-
-                await handleChangeLiftPos(info, lift, floor, calledFor, liftDiv);
-                await handleChangeDoorPos(lift, liftDiv, calledFor);
-                resolve(`Processed request for floor ${floor}, called for ${calledFor} by lift ${lift}`);
-                return;
-
-            }
-        
-        }else {
-               
-                if(floor < destFloor){
-                    const diff = Math.abs(floorPos - currentPos);
-                    let time = (diff / Math.abs(floorDiffInPixel))*2000;
-
-                    if(status !== Status.moving && status !== Status.idle){
-                        time += 700;
-                    }
-
-                    setTimeout(()=>{
-                        console.log(`Lift request for floor ${floor}, called for ${calledFor} is in queue`);
-                        requestQueue.push({floor: floor, calledFor:calledFor});
-                    }, time)
-                    return;
-
-                }else if(floor > destFloor){
-                    cleanUp.forEach((v, id)=>{
-                        if (v.lift === lift){
-                            clearTimeout(id);
-                            cleanUp.delete(id);
-                        }
-                    })
-    
-                    console.log(`Lift will stop at the floor ${floor}`)
-
-                    // timen taken to reach the new dest floor + door movement
-                    const diff = Math.abs(newfloorPos - currentPos);
-                    let time = (diff / Math.abs(floorDiffInPixel))*2000;
-
-                    
-                    if(status !== Status.moving && status !== Status.idle){
-                        time += 700;
-                    }
-
-                    setTimeout(()=>{
-                            console.log(`Lift request for floor ${destFloor}, called for ${liftCalledFor} is in queue`);
-                            requestQueue.push({floor: destFloor, calledFor: liftCalledFor})
-                    }, time)
-
-                    await handleChangeLiftPos(info, lift, floor, calledFor, liftDiv);
-                    await handleChangeDoorPos(lift, liftDiv, calledFor);
-                    resolve(`Processed request for floor ${floor}, called for ${calledFor} by lift ${lift}`);
-                    return;
-                }        
-            }
     });
 }
 
