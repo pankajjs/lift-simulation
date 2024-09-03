@@ -454,13 +454,9 @@ liftInput.addEventListener("keyup", validateInput);
 
 function validateInput(e){
     let value = e.target.value;
-    const engine = document.querySelector(".engine");
 
     if(value.length === 0) {
-        if(engine){
-            cleanState();
-            engine.remove()
-        }
+        cleanState()
         return;
     };
 
@@ -468,10 +464,7 @@ function validateInput(e){
     if(value === " "){
         alert("Must be a number");
         e.target.value = ""
-        if(engine){
-            cleanState()
-            engine.remove()
-        }
+        cleanState()
         return;
     }
 
@@ -486,10 +479,7 @@ function validateInput(e){
     if(Number.isNaN(value)){
         alert("Must be a number");
         e.target.value = ""
-        if(engine){
-            cleanState()
-            engine.remove()
-        }
+        cleanState()
         return;
     }
 }
