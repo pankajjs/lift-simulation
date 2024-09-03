@@ -161,7 +161,7 @@ background-color: #F4CE14;
 }
 
 .door-left-part-open-animation{
-    animation: door-left-part-open-animation 2.5s forwards normal ease-in;
+    animation: door-left-part-open-animation 2.5s normal ease;
 }
 
 @keyframes door-left-part-open-animation {
@@ -173,7 +173,7 @@ background-color: #F4CE14;
 }
 
 .door-right-part-open-animation{
-    animation: door-right-part-open-animation 2.5s forwards normal ease-in;
+    animation: door-right-part-open-animation 2.5s normal ease;
 }
 
 @keyframes door-right-part-open-animation {
@@ -184,7 +184,7 @@ background-color: #F4CE14;
     }
 }
 .door-right-part-close-animation{
-    animation: door-right-part-close-animation 2.5s normal forwards  ease-out;
+    animation: door-right-part-close-animation 2.5s normal ease;
 }
 
 @keyframes door-right-part-close-animation {
@@ -196,7 +196,7 @@ background-color: #F4CE14;
 }
 
 .door-left-part-close-animation{
-    animation: door-left-part-close-animation 2.5s normal forwards ease-out;
+    animation: door-left-part-close-animation 2.5s normal ease;
 }
 
 @keyframes door-left-part-close-animation {
@@ -208,7 +208,7 @@ background-color: #F4CE14;
 }
 
 .door-open-animation{
-    animation: door-open-animation 2.5s normal forwards ease-in;
+    animation: door-open-animation 2.5s normal ease;
 }
 @keyframes door-open-animation {
     from{
@@ -219,7 +219,7 @@ background-color: #F4CE14;
 }
 
 .door-close-animation{
-    animation: door-close-animation 2.5s normal forwards ease-out;
+    animation: door-close-animation 2.5s normal ease;
 }
 
 @keyframes door-close-animation{
