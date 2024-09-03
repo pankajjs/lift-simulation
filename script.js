@@ -516,10 +516,10 @@ function onSubmit(e){
         return;
     }
     
-    cleanState();
-
+    
     engineState = handleCreateEngineState(Math.ceil(lifts), Math.ceil(floors), root);
-
+    
+    cleanState();
     handleCreateEngine()
 }
 
@@ -536,5 +536,10 @@ function cleanState(){
         
         engineState.requestQueue = []
         engineState.cleanUp.clear();
+
+        const engine = document.querySelector(".engine");
+        if(engine){
+            engine.remove()
+        }
     }
 }
