@@ -206,7 +206,9 @@ const handleGetNearestLift = (floor, calledFor) => {
     const floorPos = Math.abs(floor*floorDiffInPixel);
     const {floorStatus, liftStatus} = engineState;
 
-    const liftAtCurrentFloorInfo = floorStatus.get(floor).entries().find(([_, status], _idx)=> status.calledFor === calledFor)
+    const liftsAtCurrentFloor = Array.from(floorStatus.get(floor).entries());
+
+    const liftAtCurrentFloorInfo = liftsAtCurrentFloor.find(([_, status], _idx)=> status.calledFor === calledFor)
     
     if(liftAtCurrentFloorInfo){
         // console.log("lift from floor map", liftAtCurrentFloorInfo[0]);
@@ -456,6 +458,7 @@ function validateInput(e){
 
     if(value.length === 0) {
         if(engine){
+            cleanState();
             engine.remove()
         }
         return;
@@ -466,6 +469,7 @@ function validateInput(e){
         alert("Must be a number");
         e.target.value = ""
         if(engine){
+            cleanState()
             engine.remove()
         }
         return;
@@ -483,6 +487,7 @@ function validateInput(e){
         alert("Must be a number");
         e.target.value = ""
         if(engine){
+            cleanState()
             engine.remove()
         }
         return;
@@ -511,26 +516,25 @@ function onSubmit(e){
         return;
     }
     
+    cleanState();
+
+    engineState = handleCreateEngineState(Math.ceil(lifts), Math.ceil(floors), root);
+
+    handleCreateEngine()
+}
+
+function cleanState(){
     if(engineState){
         console.log("cleaning animation..........")
         
-        engineState.cleanUp.keys().forEach((id, _)=>{
+        const keys = Array.from(engineState.cleanUp.keys());
+
+        keys.forEach((id, _)=>{
             clearInterval(id);
             clearTimeout(id);
-            
         })
         
         engineState.requestQueue = []
         engineState.cleanUp.clear();
     }
-
-    engineState = handleCreateEngineState(Math.ceil(lifts), Math.ceil(floors), root);
-    
-    const engine = document.querySelector(".engine");
-    
-    if(engine){
-        engine.remove()
-    }
-
-    handleCreateEngine()
 }
