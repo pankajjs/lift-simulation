@@ -499,14 +499,18 @@ function onSubmit(e){
     if(Number.isNaN(floors) || Number.isNaN(lifts)){
         alert("Must be a number");
         return;
-    }else if(lifts <= 0){
-        alert("Lifts must be positive non zero value");
-        return;
-    }else if(floors == 0){
+    }
+
+    if(floors == 0){
         alert("Floors must be a non zero value");
         return;
     }
-
+    
+    if(lifts <= 0){
+        alert("Lifts must be positive non zero value");
+        return;
+    }
+    
     if(engineState){
         console.log("cleaning animation..........")
         
